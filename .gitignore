@@ -5,6 +5,8 @@ agent.md
 .agents/
 .codex/
 .local-reference/
+wohin_figma_reference_bundle.zip
+original-figma-export.txt
 .DS_Store
 .env
 .env.*
