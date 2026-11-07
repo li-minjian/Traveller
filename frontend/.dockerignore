@@ -1,0 +1,14 @@
+node_modules
+dist
+test-results
+playwright-report
+tests
+.git
+.agents
+.codex
+.local-reference
+**/AGENTS.md
+**/AGENT.md
+**/agents.md
+**/agent.md
+.env*

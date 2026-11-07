@@ -2,7 +2,12 @@ export type Provenance = 'confirmed' | 'inferred' | 'unknown' | 'flexible';
 export type Field<T> = { value: T | null; provenance: Provenance };
 export type Mode = 'rail' | 'coach' | 'flight' | 'car';
 export type CostKind = 'Transport' | 'Stay' | 'Meals & activities';
-export type TripDates = { start: string; end: string; flexibility: number; season: string };
+export type TripDates = {
+  start: string;
+  end: string;
+  flexibility: number;
+  season: string;
+};
 export type Budget = { amount: number; currency: 'EUR'; hard: boolean };
 export type TransportPreference = { modes: Mode[]; hard: boolean };
 export type BusinessTrip = {
@@ -26,28 +31,52 @@ export type TravelIntent = {
   business: Field<BusinessTrip>;
 };
 
-export function field<T>(value: T | null, provenance: Provenance = 'confirmed'): Field<T> {
+export function field<T>(
+  value: T | null,
+  provenance: Provenance = 'confirmed',
+): Field<T> {
   return { value, provenance: value === null ? 'unknown' : provenance };
 }
 
 export function newIntent(): TravelIntent {
   return {
-    origin: field<string>(null), destination: field<string>(null), dates: field<TripDates>(null),
-    duration: field<number>(null), travelers: field(1, 'inferred'), budget: field<Budget>(null),
-    transport: field<TransportPreference>(null), accommodation: field<string>(null),
-    interests: field<string[]>(null), business: field<BusinessTrip>(null),
+    origin: field<string>(null),
+    destination: field<string>(null),
+    dates: field<TripDates>(null),
+    duration: field<number>(null),
+    travelers: field(1, 'inferred'),
+    budget: field<Budget>(null),
+    transport: field<TransportPreference>(null),
+    accommodation: field<string>(null),
+    interests: field<string[]>(null),
+    business: field<BusinessTrip>(null),
   };
 }
 
 export const modes: Mode[] = ['rail', 'coach', 'flight', 'car'];
-export const modeNames: Record<Mode, string> = { rail: 'Train', coach: 'Coach', flight: 'Flight', car: 'Car' };
+export const modeNames: Record<Mode, string> = {
+  rail: 'Train',
+  coach: 'Coach',
+  flight: 'Flight',
+  car: 'Car',
+};
 export const budgetLabel = (amount: number | null) =>
-  amount === null ? 'Unknown' : new Intl.NumberFormat('en-IE', {
-    style: 'currency', currency: 'EUR', maximumFractionDigits: 0,
-  }).format(amount);
+  amount === null
+    ? 'Unknown'
+    : new Intl.NumberFormat('en-IE', {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(amount);
 
 export type Coordinates = readonly [latitude: number, longitude: number];
-export type Place = { id: string; name: string; description: string; coordinates?: Coordinates };
+export type Place = {
+  id: string;
+  name: string;
+  description: string;
+  coordinates?: Coordinates;
+};
 export type Destination = Place & {
   region: string;
   aliases: string[];
@@ -69,9 +98,20 @@ export type TransportOption = {
   arrival: string | null;
   origin: string;
 };
-export type Accommodation = { name: string; kind: string; nightly: number | null; detail: string; image?: string };
+export type Accommodation = {
+  name: string;
+  kind: string;
+  nightly: number | null;
+  detail: string;
+  image?: string;
+};
 export type Cost = { label: CostKind; amount: number | null };
-export type DecisionSignal = { label: string; detail: string; outcome: 'fits' | 'tradeoff' | 'unknown'; hard: boolean };
+export type DecisionSignal = {
+  label: string;
+  detail: string;
+  outcome: 'fits' | 'tradeoff' | 'unknown';
+  hard: boolean;
+};
 
 export type TravelOpportunity = {
   id: string;
@@ -93,39 +133,80 @@ export type TravelOpportunity = {
 
 export type ExploreReport = {
   opportunity: TravelOpportunity;
-  itinerary: { label: string; title: string; description: string }[];
+  itinerary: {
+    placeId: string;
+    label: string;
+    title: string;
+    description: string;
+  }[];
   transportOptions: TransportOption[];
 };
 
-export type SearchResult = { revision: number; opportunities: TravelOpportunity[]; conflicts: string[] };
+export type SearchResult = {
+  revision: number;
+  opportunities: TravelOpportunity[];
+  conflicts: string[];
+};
 export type SearchRequest = {
   revision: number;
   intent: TravelIntent;
   signal: AbortSignal;
   simulateError?: boolean;
 };
+export type IntentInterpretation = {
+  changes: Partial<TravelIntent>;
+  simulateError: boolean;
+  supported: boolean;
+};
+
 export interface TravelService {
   destinations(): Destination[];
+  interpret(prompt: string, intent: TravelIntent): IntentInterpretation;
   search(request: SearchRequest): Promise<SearchResult>;
-  explore(request: SearchRequest, opportunityId: string): Promise<{ revision: number; report: ExploreReport | null }>;
+  explore(
+    request: SearchRequest,
+    opportunityId: string,
+  ): Promise<{ revision: number; report: ExploreReport | null }>;
 }
 
 export function validCoordinates(point?: Coordinates): point is Coordinates {
-  return Boolean(point && Number.isFinite(point[0]) && Number.isFinite(point[1])
-    && Math.abs(point[0]) <= 90 && Math.abs(point[1]) <= 180);
+  return Boolean(
+    point &&
+    Number.isFinite(point[0]) &&
+    Number.isFinite(point[1]) &&
+    Math.abs(point[0]) <= 90 &&
+    Math.abs(point[1]) <= 180,
+  );
 }
 
 export function dateSpan(start: string, end: string) {
   return Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000) + 1;
 }
 
+export function addDays(date: string, days: number) {
+  const result = new Date(Date.parse(date) + days * 86_400_000);
+  return result.toISOString().slice(0, 10);
+}
+
 export function datesLabel(dates: TripDates | null) {
   if (!dates) return 'Any time';
-  if (dates.season) return dates.season + (dates.flexibility ? ` · ±${dates.flexibility} days` : '');
-  if (!dates.start) return dates.flexibility ? `Flexible ±${dates.flexibility} days` : 'Any time';
-  const format = (date: string) => new Intl.DateTimeFormat('en-GB', {
-    month: 'short', day: 'numeric', timeZone: 'UTC',
-  }).format(new Date(date));
-  const range = dates.end && dates.end !== dates.start ? `${format(dates.start)} – ${format(dates.end)}` : format(dates.start);
+  if (dates.season)
+    return (
+      dates.season + (dates.flexibility ? ` · ±${dates.flexibility} days` : '')
+    );
+  if (!dates.start)
+    return dates.flexibility
+      ? `Flexible ±${dates.flexibility} days`
+      : 'Any time';
+  const format = (date: string) =>
+    new Intl.DateTimeFormat('en-GB', {
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    }).format(new Date(date));
+  const range =
+    dates.end && dates.end !== dates.start
+      ? `${format(dates.start)} – ${format(dates.end)}`
+      : format(dates.start);
   return range + (dates.flexibility ? ` · ±${dates.flexibility} days` : '');
 }
