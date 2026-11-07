@@ -1,0 +1,7 @@
+# Decisions and gaps
+
+- **Delivery scope.** The v3 brief adds a shared manual search journey alongside the older AI-focused PRD. Discovery, comparison and exploration can be revisited freely. The UI uses English and EUR to follow Draft v1.
+- **Data and assistant.** Six sample journeys cover five destinations and several origins. The local interpreter recognizes destination aliases, supported origins, EUR budgets, ISO dates, flexibility, travelers, simple trip interests and business meeting language. Date-specific connections, actual availability and broader language interpretation need a future service.
+- **Business scenario.** Hard and soft settings demonstrate constraint evaluation. The team still needs to decide which business scenarios are in scope and what policy sources and timezones are needed. Private extension nights affect the overall estimate.
+- **Maps and imagery.** Maps plot supplied coordinates schematically. The map provider, basemap and route data remain open. Runtime artwork is a selected, WebP-compressed subset of the supplied Figma reference bundle. The raw design exports stay outside Git. Confirm artwork reuse terms before a wider release.
+- **Integration.** Decide how the real assistant returns intent changes, progressive results and report evidence. REST, event streaming, agent responsibilities and deployment topology remain open. The old architecture page is historical context. [Architecture discussion](https://app.notion.com/p/3f95f33c39bb81aaa597c52071f57b35)
