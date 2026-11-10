@@ -9,6 +9,14 @@ const apiProxy = {
 
 export default defineConfig({
   oxc: { jsx: { runtime: 'automatic' } },
-  server: { proxy: apiProxy },
+  server: {
+    proxy: apiProxy,
+    // WATCH_POLLING=true helps where file events do not reach the container,
+    // e.g. Docker on Windows with the project outside WSL.
+    watch:
+      process.env.WATCH_POLLING === 'true'
+        ? { usePolling: true, interval: 300 }
+        : undefined,
+  },
   preview: { proxy: apiProxy },
 });
