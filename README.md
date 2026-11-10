@@ -49,6 +49,7 @@ The assistant matches a small set of keywords and displays inferred values separ
 
 ## Project references
 
+- [Project structure, versions and data separation](docs/PROJECT_STRUCTURE.md)
 - [Product scope and requirement traceability](docs/PRODUCT_SCOPE.md)
 - [Journeys and design system](docs/UX_FLOW_AND_DESIGN_SYSTEM.md)
 - [Frontend contract draft](docs/FRONTEND_CONTRACT_DRAFT.md)
