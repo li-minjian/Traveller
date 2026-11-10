@@ -43,4 +43,4 @@ Getrennte PostgreSQL-Schemas wurden verworfen: Django unterstützt sie nur über
 
 ## Lokale Konfiguration
 
-Zugangsdaten und lokale Einstellungen liegen in `.env`-Dateien und werden nicht eingecheckt. Eingecheckt wird nur `.env.example` mit unkritischen Beispielwerten (ab G04). Abhängigkeiten (`node_modules/`, `.venv/`), Build-Ausgaben und Testberichte sind über `.gitignore` ausgeschlossen.
+Zugangsdaten und lokale Einstellungen liegen in der `.env` im Repo-Root, die nicht eingecheckt wird. Eingecheckt ist nur [`.env.example`](../.env.example) mit funktionierenden, unkritischen Werten für die lokale Entwicklung. Die eigene `.env` entsteht mit `cp .env.example .env`. Abhängigkeiten (`node_modules/`, `.venv/`), Build-Ausgaben und Testberichte sind über `.gitignore` ausgeschlossen.

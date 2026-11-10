@@ -12,6 +12,8 @@ Django 5.2 LTS mit Django REST Framework und PostgreSQL 18, Python 3.14. Stellt 
 
 ## Umgebungsvariablen
 
+Für die lokale Entwicklung stehen funktionierende Werte in [`.env.example`](../.env.example) im Repo-Root. Mit `cp .env.example .env` entsteht daraus die eigene `.env`. Django liest sie beim Start automatisch. Echte Umgebungsvariablen haben Vorrang, und die `.env` wird nie eingecheckt.
+
 | Variable | Pflicht | Standard | Bedeutung |
 | --- | --- | --- | --- |
 | `DJANGO_SECRET_KEY` | ja | – | Geheimer Schlüssel von Django. |
@@ -23,25 +25,24 @@ Django 5.2 LTS mit Django REST Framework und PostgreSQL 18, Python 3.14. Stellt 
 | `POSTGRES_HOST` | nein | `localhost` | Host der Datenbank. |
 | `POSTGRES_PORT` | nein | `5432` | Port der Datenbank. |
 
-Fehlt eine Pflichtvariable, bricht Django beim Start mit einer klaren Meldung ab, zum Beispiel `Environment variable DJANGO_SECRET_KEY is not set.`
+Fehlt eine Pflichtvariable oder ist sie leer, bricht Django beim Start mit einer klaren Meldung ab, zum Beispiel `Environment variable DJANGO_SECRET_KEY is not set.` Ist eine optionale Variable leer, gilt ihr Standardwert.
 
 ## Lokal starten
 
 Diese Anleitung gilt, bis Docker Compose alle Dienste startet (G04, #8). Voraussetzungen sind Docker und Python 3.14. Python 3.13 funktioniert ebenfalls.
 
 ```sh
-# PostgreSQL 18 als lokaler Container, nur an localhost gebunden
-docker run -d --name traveller-db -p 127.0.0.1:5432:5432 \
-  -e POSTGRES_DB=traveller -e POSTGRES_USER=traveller \
-  -e POSTGRES_PASSWORD=dev-only-password postgres:18
+# Im Repo-Root: lokale Konfiguration anlegen
+cp .env.example .env
+
+# PostgreSQL 18 als lokaler Container, nur an localhost gebunden,
+# mit Datenbankname, Benutzer und Passwort aus der .env
+docker run -d --name traveller-db -p 127.0.0.1:5432:5432 --env-file .env postgres:18
 
 cd backend
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
-
-export DJANGO_SECRET_KEY=dev-only-secret DJANGO_DEBUG=true \
-  POSTGRES_DB=traveller POSTGRES_USER=traveller POSTGRES_PASSWORD=dev-only-password
 
 python manage.py migrate
 python manage.py runserver

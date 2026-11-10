@@ -8,8 +8,13 @@ import os
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Local development: read the repository's .env if it exists.
+# Real environment variables always take precedence.
+load_dotenv(BASE_DIR.parent / ".env", override=False)
 
 _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
