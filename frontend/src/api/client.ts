@@ -19,6 +19,55 @@ export type PlanningSession = {
 
 export type FieldErrors = Record<string, string[]>;
 
+/** Every list endpoint answers with this page shape. */
+export type Paginated<T> = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+};
+
+export type ReferenceSplit = 'train' | 'validation' | 'test';
+export type ReferenceLevel = 'easy' | 'medium' | 'hard';
+
+export type BenchmarkDataset = {
+  slug: string;
+  name: string;
+  version: string;
+  license: string;
+  license_url: string;
+  source_url: string;
+  homepage_url: string;
+  citation: string;
+  notice: string;
+};
+
+/** Historical TravelPlanner case as listed (without the large fields). */
+export type ReferenceCaseSummary = {
+  id: string;
+  data_kind: 'historical_benchmark';
+  dataset: BenchmarkDataset;
+  split: ReferenceSplit;
+  level: ReferenceLevel;
+  query: string;
+  org: string;
+  dest: string;
+  days: number;
+  visiting_city_number: number | null;
+  date: string[];
+  people_number: number | null;
+  local_constraint: Record<string, unknown> | null;
+  budget: { amount: number; currency: string; basis: string } | null;
+  has_annotated_plan: boolean;
+};
+
+export type ReferenceCaseQuery = {
+  split?: ReferenceSplit;
+  level?: ReferenceLevel;
+  days?: number;
+  page?: number;
+};
+
 /**
  * - `unreachable`: no answer from Django (connection failed, or the proxy or
  *   gateway responded with a server error instead).
@@ -143,4 +192,15 @@ export const backend = {
       `/planning-sessions/${encodeURIComponent(id)}/`,
       { signal },
     ),
+
+  listReferenceCases: (query: ReferenceCaseQuery = {}, signal?: AbortSignal) => {
+    const params = new URLSearchParams();
+    for (const [name, value] of Object.entries(query))
+      if (value !== undefined) params.set(name, String(value));
+    const search = params.toString();
+    return request<Paginated<ReferenceCaseSummary>>(
+      `/reference-cases/${search ? `?${search}` : ''}`,
+      { signal },
+    );
+  },
 };
