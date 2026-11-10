@@ -1968,3 +1968,133 @@ tbody th {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* System status: technical page for the backend connection */
+.system-page {
+  display: grid;
+  gap: 18px;
+  max-width: 920px;
+  padding-block: clamp(28px, 5vw, 64px) 0;
+}
+.system-intro h1 {
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
+}
+.system-intro p:not(.eyebrow) {
+  max-width: 62ch;
+  margin-top: 8px;
+  color: var(--muted);
+}
+.system-card h2 {
+  font-size: clamp(1.5rem, 2.4vw, 1.95rem);
+}
+.system-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 14px;
+}
+.system-status p {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.status-dot {
+  width: 12px;
+  height: 12px;
+  margin-top: 5px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.status-ok .status-dot {
+  background: #2f7d55;
+}
+.status-warning .status-dot {
+  background: #b8731f;
+}
+.status-error .status-dot {
+  background: #b4442c;
+}
+.system-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 16px;
+}
+.system-meta {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+.system-actions .system-meta {
+  margin-top: 0;
+}
+.system-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+.system-form label {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.system-form input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #cbd3d3;
+  border-radius: 6px;
+  background: var(--canvas);
+  padding: 7px 9px;
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.system-form input::placeholder {
+  color: #58696d;
+  opacity: 1;
+}
+.system-form input[aria-invalid='true'] {
+  border-color: #b4442c;
+}
+.field-error {
+  margin-top: 6px;
+  color: #9b3a24;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.system-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e1baab;
+  border-radius: 8px;
+  background: #fdf4f1;
+  color: #7a2e1c;
+  font-size: 0.82rem;
+}
+.session-details {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 16px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--canvas);
+  font-size: 0.85rem;
+}
+.session-details dt {
+  font-weight: 700;
+}
+.session-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
