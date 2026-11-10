@@ -1,3 +1,4 @@
+# Local agent and design files
 AGENTS.md
 AGENT.md
 agents.md
@@ -7,10 +8,31 @@ agent.md
 .local-reference/
 wohin_figma_reference_bundle.zip
 original-figma-export.txt
+
+# OS and editor files
 .DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local configuration and credentials (only the example file is committed)
 .env
 .env.*
+!.env.example
+
+# Frontend dependencies and generated files
 node_modules/
 dist/
 test-results/
 playwright-report/
+
+# Python dependencies and generated files
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+staticfiles/
+*.sqlite3
