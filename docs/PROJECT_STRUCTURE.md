@@ -6,7 +6,7 @@ Stand: Grundgerüst (G01, #5). Was hier als **geplant** markiert ist, existiert 
 
 | Pfad | Zuständigkeit |
 | --- | --- |
-| `backend/` | Django-Projekt mit Django REST Framework. Stellt die REST-API unter `/api/v1/` bereit und ist die einzige Komponente mit Zugriff auf PostgreSQL. **Geplant ab G02 (#6).** |
+| `backend/` | Django-Projekt mit Django REST Framework. Stellt die REST-API unter `/api/v1/` bereit und ist die einzige Komponente mit Zugriff auf PostgreSQL. Details: [backend/README.md](../backend/README.md). |
 | `frontend/` | React-Anwendung mit TypeScript und Vite. Spricht das Backend ausschließlich über relative Pfade unter `/api/` an (im Entwicklungsbetrieb über den Vite-Proxy). |
 | `docs/` | Projekt- und Entwicklerdokumentation: Aufbau, Einrichtung, API-Konventionen, Entscheidungen. |
 | `compose.yaml` | Lokale Entwicklungsumgebung für Frontend, Backend und PostgreSQL. **Ausbau zu drei Services in G04 (#8).** |
@@ -35,7 +35,7 @@ Es gibt **eine gemeinsame PostgreSQL-Datenbank**. Anwendungs- und Referenzdaten 
 
 | Datenart | Django-App | Eigenschaften |
 | --- | --- | --- |
-| Anwendungsdaten | `planning` | Von Nutzerinnen und Nutzern erzeugt (z. B. Planungssitzungen). Über die API les- und schreibbar. **Geplant ab G02.** |
+| Anwendungsdaten | `planning` | Von Nutzerinnen und Nutzern erzeugt (z. B. Planungssitzungen). Über die API les- und schreibbar. |
 | Referenzdaten | `reference_data` | Historische TravelPlanner-Benchmark-Fälle. Nur per Management-Kommando importierbar, über die API ausschließlich lesbar. Ein Import verändert keine Anwendungsdaten. **Geplant ab G05 (#9).** |
 | Testdaten | – | Django legt für Tests automatisch eine separate Datenbank (`test_<name>`) an und löscht sie danach. Entwicklungsdaten bleiben unberührt. |
 

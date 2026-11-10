@@ -1,5 +1,83 @@
 # Backend
 
-Django-Backend mit Django REST Framework und PostgreSQL. Stellt die REST-API unter `/api/v1/` bereit.
+Django 5.2 LTS mit Django REST Framework und PostgreSQL 18, Python 3.14. Stellt die REST-API unter `/api/v1/` bereit. Versionen und Datenhaltung: [docs/PROJECT_STRUCTURE.md](../docs/PROJECT_STRUCTURE.md).
 
-Wird in G02 (#6) angelegt. Aufbau, Versionen und Datenhaltung: [docs/PROJECT_STRUCTURE.md](../docs/PROJECT_STRUCTURE.md).
+## Aufbau
+
+| Pfad | Inhalt |
+| --- | --- |
+| `config/` | Django-Projekt: Einstellungen aus Umgebungsvariablen, URL-Routing, Health-Endpunkt, einheitliche Fehlerbehandlung. |
+| `planning/` | App für Anwendungsdaten. Enthält das Modell `PlanningSession` mit Serializer, Views und Migrationen. |
+| `requirements.txt` | Exakt gepinnte Abhängigkeiten, inklusive transitiver Pakete. |
+
+## Umgebungsvariablen
+
+| Variable | Pflicht | Standard | Bedeutung |
+| --- | --- | --- | --- |
+| `DJANGO_SECRET_KEY` | ja | – | Geheimer Schlüssel von Django. |
+| `DJANGO_DEBUG` | nein | `false` | `true` nur für die lokale Entwicklung. |
+| `DJANGO_ALLOWED_HOSTS` | nein | `localhost,127.0.0.1` | Kommagetrennte Hostnamen, unter denen das Backend antwortet. |
+| `POSTGRES_DB` | ja | – | Name der Datenbank. |
+| `POSTGRES_USER` | ja | – | Datenbankbenutzer. |
+| `POSTGRES_PASSWORD` | ja | – | Passwort des Datenbankbenutzers. |
+| `POSTGRES_HOST` | nein | `localhost` | Host der Datenbank. |
+| `POSTGRES_PORT` | nein | `5432` | Port der Datenbank. |
+
+Fehlt eine Pflichtvariable, bricht Django beim Start mit einer klaren Meldung ab, zum Beispiel `Environment variable DJANGO_SECRET_KEY is not set.`
+
+## Lokal starten
+
+Diese Anleitung gilt, bis Docker Compose alle Dienste startet (G04, #8). Voraussetzungen sind Docker und Python 3.14. Python 3.13 funktioniert ebenfalls.
+
+```sh
+# PostgreSQL 18 als lokaler Container, nur an localhost gebunden
+docker run -d --name traveller-db -p 127.0.0.1:5432:5432 \
+  -e POSTGRES_DB=traveller -e POSTGRES_USER=traveller \
+  -e POSTGRES_PASSWORD=dev-only-password postgres:18
+
+cd backend
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+
+export DJANGO_SECRET_KEY=dev-only-secret DJANGO_DEBUG=true \
+  POSTGRES_DB=traveller POSTGRES_USER=traveller POSTGRES_PASSWORD=dev-only-password
+
+python manage.py migrate
+python manage.py runserver
+```
+
+Danach antwortet `http://localhost:8000/api/v1/health/`. Mit `docker stop traveller-db` bzw. `docker start traveller-db` bleiben die Daten erhalten. Erst `docker rm -v traveller-db` löscht sie.
+
+Nach einer Modelländerung erzeugt `python manage.py makemigrations` die passende Migration. Sie wird zusammen mit der Änderung eingecheckt.
+
+## Endpunkte
+
+Alle Pfade enden mit einem Schrägstrich. Ohne Schrägstrich antwortet die API mit 404. Anfragen und Antworten verwenden JSON, Zeitstempel sind ISO 8601 in UTC.
+
+| Methode | Pfad | Erfolg | Fehler |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/health/` | `200` `{"status":"ok","database":"ok"}` | `503` Datenbank nicht erreichbar |
+| `POST` | `/api/v1/planning-sessions/` | `201` mit der angelegten Session | `400` ungültige Eingabe, `415` kein JSON |
+| `GET` | `/api/v1/planning-sessions/{id}/` | `200` mit der Session | `404` unbekannte oder ungültige ID |
+
+```sh
+curl -X POST http://localhost:8000/api/v1/planning-sessions/ \
+  -H 'Content-Type: application/json' -d '{"title": "Wochenende in Leipzig"}'
+```
+
+```json
+{"id": "b0d98159-b5f4-484d-895a-8061d5184305", "title": "Wochenende in Leipzig", "created_at": "2026-11-10T10:58:14.639761Z"}
+```
+
+`title` ist Pflicht. Es darf nicht leer sein und höchstens 200 Zeichen haben. `id` und `created_at` vergibt der Server.
+
+## Fehlerformat
+
+Jeder Fehler hat dieselbe Struktur. `fields` gibt es nur bei Validierungsfehlern.
+
+```json
+{"error": {"code": "validation_error", "message": "The input is invalid.", "fields": {"title": ["This field is required."]}}}
+```
+
+Codes: `validation_error`, `parse_error`, `unsupported_media_type`, `not_found`, `method_not_allowed`, `service_unavailable`, `internal_error`. Unerwartete Fehler werden mit Traceback geloggt. Der Client erhält davon nichts, auch nicht bei `DJANGO_DEBUG=true`.

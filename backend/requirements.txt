@@ -1,0 +1,10 @@
+# Exakt gepinnte Backend-Abhängigkeiten (aufgelöst mit Python 3.14).
+# Direkte Abhängigkeiten
+Django==5.2.19
+djangorestframework==3.18.3
+psycopg[binary]==3.3.8
+
+# Transitive Abhängigkeiten
+asgiref==3.13.0
+psycopg-binary==3.3.8
+sqlparse==0.6.1
