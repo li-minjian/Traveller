@@ -2,9 +2,9 @@
 #
 #   cp .env.example .env
 #   docker compose up --build -d
-#   docker compose exec backend python manage.py migrate
 #
 # Source code is mounted into the containers; changes apply without rebuilding.
+# The backend applies pending migrations on every start.
 name: traveller
 
 services:
@@ -28,6 +28,11 @@ services:
   backend:
     build: ./backend
     image: traveller-backend:dev
+    # Apply pending migrations, then start the development server. Commands
+    # given to `docker compose run backend ...` replace this and skip it.
+    command: >-
+      sh -c "python manage.py migrate --noinput
+      && exec python manage.py runserver 0.0.0.0:8000"
     env_file: .env
     environment:
       POSTGRES_HOST: db

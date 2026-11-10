@@ -34,10 +34,11 @@ Standard ist Docker Compose aus dem Repo-Root, siehe [README](../README.md#run-w
 ```sh
 cp .env.example .env
 docker compose up --build -d
-docker compose exec backend python manage.py migrate
 ```
 
-Django-Befehle laufen dann mit `docker compose exec backend python manage.py <befehl>`. Nach einer Modelländerung erzeugt zum Beispiel `makemigrations` die Migration. Sie landet über den Bind-Mount direkt in `backend/` und wird zusammen mit der Änderung eingecheckt.
+Beim Start wendet das Backend offene Migrationen automatisch an. Weitere Django-Befehle laufen mit `docker compose exec backend python manage.py <befehl>`.
+
+Nach einer Modelländerung erzeugt `docker compose exec backend python manage.py makemigrations` die Migration. Sie landet über den Bind-Mount direkt in `backend/` und wird zusammen mit der Änderung eingecheckt. Anwenden lässt sie sich sofort mit `… migrate` oder beim nächsten Neustart mit `docker compose restart backend`.
 
 ### Ohne Docker für das Backend
 
