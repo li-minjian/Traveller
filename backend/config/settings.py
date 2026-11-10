@@ -56,6 +56,7 @@ ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 INSTALLED_APPS = [
     "rest_framework",
     "planning",
+    "reference_data",
 ]
 
 MIDDLEWARE = [
@@ -97,6 +98,9 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
     "UNAUTHENTICATED_USER": None,
     "EXCEPTION_HANDLER": "config.exceptions.api_exception_handler",
+    # Lists: {"count", "next", "previous", "results"}, 20 entries per page.
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
 }
 
 LOGGING = {

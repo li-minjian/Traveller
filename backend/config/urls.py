@@ -5,6 +5,7 @@ from config import views
 urlpatterns = [
     path("api/v1/health/", views.health, name="health"),
     path("api/v1/", include("planning.urls")),
+    path("api/v1/", include("reference_data.urls")),
     # Unknown API paths answer with the JSON error body, also when DEBUG is on.
     re_path(r"^api/", views.not_found),
 ]

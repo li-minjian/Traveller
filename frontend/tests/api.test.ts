@@ -148,3 +148,26 @@ describe('Backend API client', () => {
     expect((error as Error).name).toBe('AbortError');
   });
 });
+
+describe('Reference cases', () => {
+  const page = { count: 0, next: null, previous: null, results: [] };
+
+  it('lists reference cases without filters', async () => {
+    const fetchMock = stubFetch(jsonResponse(200, page));
+    await expect(backend.listReferenceCases()).resolves.toEqual(page);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/reference-cases/');
+  });
+
+  it('passes only the given filters as query parameters', async () => {
+    const fetchMock = stubFetch(jsonResponse(200, page));
+    await backend.listReferenceCases({
+      split: 'validation',
+      level: 'hard',
+      days: undefined,
+      page: 2,
+    });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      '/api/v1/reference-cases/?split=validation&level=hard&page=2',
+    );
+  });
+});

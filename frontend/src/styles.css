@@ -352,3 +352,57 @@ main:focus {
   margin: 0;
   overflow-wrap: anywhere;
 }
+.reference-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0 0;
+}
+.reference-counts div {
+  min-width: 120px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--canvas);
+}
+.reference-counts dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.reference-counts dd {
+  margin: 2px 0 0;
+  font-size: 1.35rem;
+  font-weight: 750;
+}
+.reference-samples {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.reference-samples li {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+.reference-samples code {
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+.reference-facts {
+  font-weight: 700;
+}
+.reference-query {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--muted);
+}

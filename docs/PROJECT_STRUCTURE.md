@@ -36,7 +36,7 @@ Es gibt **eine gemeinsame PostgreSQL-Datenbank**. Anwendungs- und Referenzdaten 
 | Datenart | Django-App | Eigenschaften |
 | --- | --- | --- |
 | Anwendungsdaten | `planning` | Von Nutzerinnen und Nutzern erzeugt (z. B. Planungssitzungen). Über die API les- und schreibbar. |
-| Referenzdaten | `reference_data` | Historische TravelPlanner-Benchmark-Fälle. Nur per Management-Kommando importierbar, über die API ausschließlich lesbar. Ein Import verändert keine Anwendungsdaten. **Geplant ab G05 (#9).** |
+| Referenzdaten | `reference_data` | Historische TravelPlanner-Benchmark-Fälle (vollständiger Datensatz, 1.225 Fälle, im Repository unter `backend/reference_data/data/travelplanner/`). Nur per Management-Kommando `import_reference_cases` importierbar, über die API ausschließlich lesbar. Ein Import verändert keine Anwendungsdaten. |
 | Testdaten | – | Django legt für Tests automatisch eine separate Datenbank (`test_<name>`) an und löscht sie danach. Entwicklungsdaten bleiben unberührt. |
 
 Getrennte PostgreSQL-Schemas wurden verworfen: Django unterstützt sie nur über Umwege (`search_path`, manuelle Tabellennamen), ohne dass der Prototyp davon profitiert.

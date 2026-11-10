@@ -1,8 +1,13 @@
-import { Activity, Plus, RefreshCw, Search } from 'lucide-react';
+import { Activity, ExternalLink, Plus, RefreshCw, Search } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiError, backend } from '../api/client';
-import type { PlanningSession } from '../api/client';
+import type {
+  BenchmarkDataset,
+  PlanningSession,
+  ReferenceCaseSummary,
+  ReferenceSplit,
+} from '../api/client';
 import { Eyebrow } from '../components/ui';
 
 /**
@@ -25,6 +30,7 @@ export function SystemStatusPage() {
       </header>
       <HealthCard />
       <SessionCards />
+      <ReferenceDataCard />
     </div>
   );
 }
@@ -307,5 +313,150 @@ function SessionCards() {
         )}
       </section>
     </>
+  );
+}
+
+const splits: ReferenceSplit[] = ['train', 'validation', 'test'];
+const importCommand =
+  'docker compose exec backend python manage.py import_reference_cases';
+
+type ReferenceData =
+  | { state: 'loading' }
+  | { state: 'failed'; error: unknown }
+  | {
+      state: 'done';
+      counts: Record<ReferenceSplit, number>;
+      dataset: BenchmarkDataset | null;
+      samples: ReferenceCaseSummary[];
+    };
+
+function ReferenceDataCard() {
+  const [data, setData] = useState<ReferenceData>({ state: 'loading' });
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    Promise.all(
+      splits.map((split) =>
+        backend.listReferenceCases({ split }, controller.signal),
+      ),
+    ).then(
+      (pages) => {
+        const counts = Object.fromEntries(
+          splits.map((split, index) => [split, pages[index].count]),
+        ) as Record<ReferenceSplit, number>;
+        const first = pages.find((page) => page.results.length > 0);
+        setData({
+          state: 'done',
+          counts,
+          dataset: first?.results[0].dataset ?? null,
+          samples: (first?.results ?? []).slice(0, 3),
+        });
+      },
+      (error: unknown) => {
+        if (!controller.signal.aborted) setData({ state: 'failed', error });
+      },
+    );
+    return () => controller.abort();
+  }, [attempt]);
+
+  function recheck() {
+    setData({ state: 'loading' });
+    setAttempt((value) => value + 1);
+  }
+
+  const total =
+    data.state === 'done'
+      ? splits.reduce((sum, split) => sum + data.counts[split], 0)
+      : 0;
+
+  let tone = 'checking';
+  let label = 'Loading reference data…';
+  let detail = 'Requesting the reference cases.';
+  if (data.state === 'failed') {
+    tone = 'error';
+    label = 'Reference data unavailable';
+    detail = describeError(data.error);
+  } else if (data.state === 'done' && total === 0) {
+    tone = 'warning';
+    label = 'Not imported yet';
+    detail =
+      'The database contains no reference cases yet. Import them with the command above.';
+  } else if (data.state === 'done') {
+    tone = 'ok';
+    label = `${total.toLocaleString('en-US')} cases imported`;
+    detail = 'Historical benchmark data, read-only through the API.';
+  }
+
+  return (
+    <section
+      className="section-card system-card"
+      aria-labelledby="reference-data-heading"
+    >
+      <h2 id="reference-data-heading">Reference data</h2>
+      <p className="system-meta">
+        <code>GET /api/v1/reference-cases/</code> · TravelPlanner benchmark
+        cases imported with <code>{importCommand}</code>
+      </p>
+      <div className={`system-status status-${tone}`} role="status">
+        <span className="status-dot" aria-hidden="true" />
+        <div>
+          <strong>{label}</strong>
+          <p>{detail}</p>
+        </div>
+      </div>
+
+      {data.state === 'done' && total > 0 && (
+        <>
+          <dl className="reference-counts" aria-label="Cases per split">
+            {splits.map((split) => (
+              <div key={split}>
+                <dt>{split}</dt>
+                <dd>{data.counts[split].toLocaleString('en-US')}</dd>
+              </div>
+            ))}
+          </dl>
+          {data.dataset && (
+            <p className="system-meta">
+              {data.dataset.name} · version{' '}
+              <code>{data.dataset.version.slice(0, 7)}</code> ·{' '}
+              <a href={data.dataset.license_url}>{data.dataset.license}</a> ·{' '}
+              {data.dataset.notice}
+            </p>
+          )}
+          <ul className="reference-samples" aria-label="Example cases">
+            {data.samples.map((sample) => (
+              <li key={sample.id}>
+                <code>{sample.id}</code>
+                <span className="reference-facts">
+                  {sample.level} · {sample.days} days · {sample.org} →{' '}
+                  {sample.dest}
+                </span>
+                <span className="reference-query">{sample.query}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      <div className="system-actions">
+        <button
+          className="button button-outline"
+          type="button"
+          onClick={recheck}
+          disabled={data.state === 'loading'}
+        >
+          <RefreshCw size={15} /> Check again
+        </button>
+        <a
+          className="button button-outline"
+          href="/api/v1/reference-cases/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <ExternalLink size={15} /> Open API
+        </a>
+      </div>
+    </section>
   );
 }
