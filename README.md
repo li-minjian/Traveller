@@ -1,71 +1,39 @@
 # Traveller
 
-A travel-planning prototype for TU Berlin’s Project VS.
+Prototyp für das Projekt VS an der TU Berlin. Geplant ist ein verteiltes, LLM-basiertes Multi-Agenten-System, das Reisen unter Randbedingungen plant.
 
-## Run with Docker
+Bisher steht das **Grundgerüst** mit diesen Teilen:
+- React-Frontend mit einer technischen Statusseite
+- Django-Backend mit REST-API
+- PostgreSQL
+- historische TravelPlanner-Benchmark-Fälle als Referenzdaten
 
-Docker Compose starts the frontend, the Django backend and PostgreSQL for local development. You need Docker with Compose v2. From the repository root:
+## Schnellstart
+
+Voraussetzungen sind Docker mit Compose und freie Ports 3000 und 8000.
 
 ```sh
-cp .env.example .env           # once: local configuration
-docker compose up --build -d   # build and start all services
-docker compose ps              # all three services become healthy
+cp .env.example .env
+docker compose up --build -d
+docker compose exec backend python manage.py import_reference_cases
 ```
 
-The backend applies pending database migrations on every start. To load the bundled TravelPlanner benchmark cases (historical reference data, 1,225 cases, no download needed), run `docker compose exec backend python manage.py import_reference_cases`. Repeating it is safe. Details are in [backend/README.md](backend/README.md#referenzdaten-importieren).
-
-| Service | Address |
+| Was | Adresse |
 | --- | --- |
-| Frontend (Vite dev server) | [http://localhost:3000](http://localhost:3000) |
-| System status page | [http://localhost:3000/status](http://localhost:3000/status) |
-| Backend API | [http://localhost:8000/api/v1/health/](http://localhost:8000/api/v1/health/) |
-| PostgreSQL | No host port. The backend reaches it as `db` inside Compose. |
+| Oberfläche mit Statusseite | [http://localhost:3000](http://localhost:3000) |
+| Backend-API | [http://localhost:8000/api/v1/health/](http://localhost:8000/api/v1/health/) |
 
-Code changes in `frontend/` and `backend/` apply without rebuilding: Vite reloads the browser and Django restarts itself. When `package-lock.json` changes, the frontend container reinstalls its dependencies on the next start, for example with `docker compose restart frontend`. After changing `backend/requirements.txt`, rebuild with `docker compose up --build -d`.
+Die Statusseite prüft Backend und Datenbank, legt Planungssitzungen an, lädt sie und zeigt die importierten Referenzdaten. Stoppen mit `docker compose down`, die Daten bleiben dabei erhalten.
 
-| Task | Command |
+## Dokumentation
+
+| Dokument | Inhalt |
 | --- | --- |
-| Follow logs | `docker compose logs -f backend` (or `frontend`, `db`) |
-| Run a Django command | `docker compose exec backend python manage.py <command>` |
-| Apply migrations without restarting | `docker compose exec backend python manage.py migrate` |
-| Stop and keep the data | `docker compose down` |
-| Stop and delete all data (database and frontend dependencies) | `docker compose down -v` |
-
-If the database is not ready when the backend starts, for example during `docker compose restart`, the backend restarts until it is. If the backend does not become healthy, `docker compose logs backend` shows the reason, for example a failed migration. If file changes do not reach the frontend container, set `WATCH_POLLING=true` in `.env` and run `docker compose up -d`.
-
-`docker build frontend` still builds the static Nginx image of the frontend, including direct navigation to paths like `/status`. It contains no backend and does not forward `/api`. The first build needs network access for base images and packages. The running app needs no downloads.
-
-## Develop and test
-
-Use Node.js 22.12+ on the 22.x line, or Node.js 24+.
-
-```sh
-cd frontend
-npm ci
-npm run dev
-```
-
-Vite prints the local development URL. From the same directory:
-
-```sh
-npm run typecheck
-npm run lint
-npm test
-npm run build
-```
-
-Backend tests run in the Compose backend against a separate, temporary PostgreSQL test database and need no external services:
-
-```sh
-docker compose exec backend python manage.py test
-```
-
-See [backend/README.md](backend/README.md#tests) for what they cover.
-
-### Backend connection
-
-The frontend reaches the Django backend only through [src/api/client.ts](frontend/src/api/client.ts), using relative `/api/v1/...` URLs. `npm run dev` and `npm run preview` forward `/api` to `http://localhost:8000`. Set `API_PROXY_TARGET` to use another address. Start the backend as described in [backend/README.md](backend/README.md), then open `/status` to check the connection and to create or load a planning session. In Docker Compose the frontend container forwards `/api` to the `backend` service.
-
-## Project references
-
-- [Project structure, versions and data separation](docs/PROJECT_STRUCTURE.md)
+| [Einrichtung und Betrieb](docs/DEVELOPMENT.md) | Voraussetzungen, Umgebungsvariablen, Start, Stopp, Logs, Migrationen, Datenimport, Tests, Typprüfung, Build, häufige Fehler, Unterschied zwischen Stoppen und Löschen |
+| [Projektaufbau und Datenhaltung](docs/PROJECT_STRUCTURE.md) | Verzeichnisse und Apps, Zusammenspiel von React, Django und PostgreSQL, Anwendungs-, Referenz- und Testdaten, Versionen, Grenzen des Grundgerüsts, Geplantes |
+| [API-Konventionen](docs/API_CONVENTIONS.md) | verbindliche Regeln: Pfade, Methoden, Statuscodes, Fehlerformat, Feldnamen, Datum, Geld, Listen |
+| [API-Referenz](docs/API.md) | alle vorhandenen Endpunkte mit Beispielen und Fehlerfällen |
+| [Neuen Endpunkt ergänzen](docs/EXTENDING.md) | Schritt für Schritt von Modell bis Frontend |
+| [Definition of Done](docs/DEFINITION_OF_DONE.md) | gemeinsame Kriterien für jedes Ticket, Doku im selben Pull Request |
+| [Backend](backend/README.md) | Aufbau des Backends und häufige Befehle |
+| [TravelPlanner-Daten](backend/reference_data/data/travelplanner/README.md) | Herkunft, Version, Lizenz und Format der Referenzdaten |
