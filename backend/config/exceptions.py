@@ -18,6 +18,22 @@ from config.errors import NOT_FOUND_MESSAGE, error_body
 logger = logging.getLogger(__name__)
 
 
+class Conflict(exceptions.APIException):
+    """409: the request is valid but does not fit the current state."""
+
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "The request conflicts with the current state of the resource."
+    default_code = "conflict"
+
+
+class ServiceUnavailable(exceptions.APIException):
+    """503: a required service (database, LLM, provider) is temporarily unavailable."""
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = "The service is temporarily unavailable."
+    default_code = "service_unavailable"
+
+
 def api_exception_handler(exc, context):
     # Map Django's own exceptions to their DRF counterparts with generic messages.
     if isinstance(exc, Http404):

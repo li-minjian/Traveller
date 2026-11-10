@@ -8,6 +8,7 @@ from django.db import OperationalError
 from django.test import SimpleTestCase, TestCase
 from rest_framework.test import APIClient
 
+from config.exceptions import Conflict, ServiceUnavailable
 from config.settings import env, env_bool, env_list
 
 
@@ -84,6 +85,41 @@ class ErrorFormatTests(TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["error"]["code"], "service_unavailable")
         self.assertNotIn(b"5432", response.content)
+
+
+class ProjectExceptionTests(TestCase):
+    """Views raise Conflict / ServiceUnavailable; the handler renders the error body."""
+
+    def test_conflict_becomes_409(self):
+        with patch(
+            "planning.views.PlanningSessionDetailView.retrieve",
+            side_effect=Conflict("Required trip details are missing."),
+        ):
+            response = APIClient().get(
+                "/api/v1/planning-sessions/00000000-0000-0000-0000-000000000000/"
+            )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response.json(),
+            {"error": {"code": "conflict", "message": "Required trip details are missing."}},
+        )
+
+    def test_service_unavailable_becomes_503(self):
+        with (
+            patch(
+                "planning.views.PlanningSessionDetailView.retrieve",
+                side_effect=ServiceUnavailable(),
+            ),
+            self.assertLogs("django.request", level="ERROR"),
+        ):
+            response = APIClient().get(
+                "/api/v1/planning-sessions/00000000-0000-0000-0000-000000000000/"
+            )
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.json(),
+            {"error": {"code": "service_unavailable", "message": "The service is temporarily unavailable."}},
+        )
 
 
 class SettingsHelperTests(SimpleTestCase):

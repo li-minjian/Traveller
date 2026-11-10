@@ -48,7 +48,7 @@ Jede Zeile einer `.jsonl.gz`-Datei ist ein Fall. Die Feldnamen folgen dem Origin
 docker compose exec backend python manage.py import_reference_cases
 ```
 
-Mit `--split train` lassen sich einzelne Splits importieren, mit `--dry-run` prüft der Befehl nur und schreibt nichts. Weitere Details stehen in [backend/README.md](../../../README.md).
+Mit `--split train` lassen sich einzelne Splits importieren, mit `--dry-run` prüft der Befehl nur und schreibt nichts. Weitere Details stehen in [docs/DEVELOPMENT.md](../../../../docs/DEVELOPMENT.md#referenzdaten-importieren). Die API für die importierten Fälle beschreibt [docs/API.md](../../../../docs/API.md#get-apiv1reference-cases).
 
 ## Neu erzeugen
 
