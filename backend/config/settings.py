@@ -16,11 +16,17 @@ _FALSE = {"0", "false", "no", "off"}
 
 
 def env(name: str, default: str | None = None) -> str:
-    """Return a required environment variable or fail with a clear message."""
-    value = os.environ.get(name, default)
-    if value is None or value.strip() == "":
-        raise ImproperlyConfigured(f"Environment variable {name} is not set.")
-    return value
+    """Return an environment variable; empty values count as unset.
+
+    Without a default the variable is required and a missing value fails
+    with a clear message.
+    """
+    value = os.environ.get(name, "")
+    if value.strip():
+        return value
+    if default is not None:
+        return default
+    raise ImproperlyConfigured(f"Environment variable {name} is not set.")
 
 
 def env_bool(name: str, default: bool) -> bool:
