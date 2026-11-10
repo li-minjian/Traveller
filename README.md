@@ -31,7 +31,7 @@ Code changes in `frontend/` and `backend/` apply without rebuilding: Vite reload
 | Stop and keep the data | `docker compose down` |
 | Stop and delete all data (database and frontend dependencies) | `docker compose down -v` |
 
-If the backend does not become healthy, `docker compose logs backend` shows the reason, for example a failed migration. If file changes do not reach the frontend container, set `WATCH_POLLING=true` in `.env` and run `docker compose up -d`.
+If the database is not ready when the backend starts, for example during `docker compose restart`, the backend restarts until it is. If the backend does not become healthy, `docker compose logs backend` shows the reason, for example a failed migration. If file changes do not reach the frontend container, set `WATCH_POLLING=true` in `.env` and run `docker compose up -d`.
 
 `docker build frontend` still builds the static Nginx image of the frontend, including direct navigation to paths like `/status`. It contains no backend and does not forward `/api`. The first build needs network access for base images and packages. The running app needs no downloads.
 
@@ -53,6 +53,14 @@ npm run lint
 npm test
 npm run build
 ```
+
+Backend tests run in the Compose backend against a separate, temporary PostgreSQL test database and need no external services:
+
+```sh
+docker compose exec backend python manage.py test
+```
+
+See [backend/README.md](backend/README.md#tests) for what they cover.
 
 ### Backend connection
 

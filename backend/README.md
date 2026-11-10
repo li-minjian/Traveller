@@ -85,6 +85,29 @@ Imported 1225 cases (1225 new, 0 updated, 0 unchanged), rejected 0.
 - **Optionen:** `--split train` importiert nur einzelne Splits und kann mehrfach angegeben werden. `--dry-run` prüft und vergleicht, ohne zu schreiben. Statt des Standarddatensatzes kann ein eigener Pfad zu einer `manifest.json` übergeben werden.
 - **Anwendungsdaten bleiben unberührt:** Der Import schreibt nur in die Tabellen von `reference_data`, Planungssitzungen ändert er nicht. Fälle, die aus einer Datei verschwinden, löscht er ebenfalls nicht.
 
+## Tests
+
+```sh
+docker compose exec backend python manage.py test
+```
+
+```text
+Creating test database for alias 'default'...
+Ran 37 tests in 1.4s
+OK
+Destroying test database for alias 'default'...
+```
+
+- **Eigene Testdatenbank:** Django legt auf demselben PostgreSQL-Server eine eigene Datenbank `test_traveller` an und löscht sie danach wieder. Entwicklungsdaten bleiben unverändert.
+- **Keine externen Dienste:** Die Tests brauchen weder Reiseanbieter noch LLM-Zugang noch Internet. Für den Import schreiben sie eigene kleine Testdateien in einen temporären Ordner.
+- **Abgedeckt:**
+  - Health inklusive Datenbankausfall, einheitliches Fehlerformat, keine internen Details bei unerwarteten Fehlern, Hilfsfunktionen für Umgebungsvariablen (`config/tests.py`)
+  - Session-API mit gültigen und ungültigen Eingaben sowie unbekannten IDs (`planning/tests.py`)
+  - Import: wiederholt ohne Duplikate, Aktualisierung, ungültige Datensätze, Prüfsummen, Erhalt der Planungssitzungen, Kommando-Ausgabe, Vollständigkeit des mitgelieferten Datensatzes (`reference_data/tests/test_importer.py`)
+  - Lesende Referenz-API mit Seiten, Filtern, Detailansicht und gesperrten Schreibzugriffen (`reference_data/tests/test_api.py`)
+- **Gezielt ausführen:** `… test reference_data` oder `… test planning.tests.CreatePlanningSessionTests`.
+- **Abgebrochener Lauf:** Ist ein früherer Lauf abgebrochen und die Testdatenbank noch vorhanden, fragt Django nach. `--noinput` löscht sie ohne Rückfrage.
+
 ## Endpunkte
 
 Alle Pfade enden mit einem Schrägstrich. Ohne Schrägstrich antwortet die API mit 404. Anfragen und Antworten verwenden JSON, Zeitstempel sind ISO 8601 in UTC.
