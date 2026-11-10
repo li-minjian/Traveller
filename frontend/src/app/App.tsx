@@ -12,6 +12,7 @@ import { DestinationPage } from '../features/Destination';
 import { ExplorePage } from '../features/Explore';
 import { Landing } from '../features/Landing';
 import { SearchPage } from '../features/Search';
+import { SystemStatusPage } from '../features/SystemStatus';
 import { Discovery } from '../features/Workspace';
 import { DemoBadge, Notice } from '../components/ui';
 import { TravelProvider } from './TravelContext';
@@ -74,7 +75,10 @@ function Layout() {
               Wohin<span>.</span>
             </Link>
             <p>A travel-planning prototype · Project VS, TU Berlin</p>
-            <span>Sample journeys and estimates</span>
+            <span>
+              Sample journeys and estimates ·{' '}
+              <Link to="/status">System status</Link>
+            </span>
           </div>
         </footer>
       )}
@@ -93,6 +97,7 @@ export const router = createBrowserRouter([
       { path: 'destinations/:destinationId', element: <DestinationPage /> },
       { path: 'compare', element: <ComparePage /> },
       { path: 'explore/:opportunityId', element: <ExplorePage /> },
+      { path: 'status', element: <SystemStatusPage /> },
       {
         path: '*',
         element: (

@@ -37,6 +37,10 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
+### Backend connection
+
+The frontend reaches the Django backend only through [src/api/client.ts](frontend/src/api/client.ts), using relative `/api/v1/...` URLs. `npm run dev` and `npm run preview` forward `/api` to `http://localhost:8000`. Set `API_PROXY_TARGET` to use another address. Start the backend as described in [backend/README.md](backend/README.md), then open `/status` to check the connection and to create or load a planning session. The Docker image does not forward `/api` yet. That follows with Docker Compose in G04.
+
 Playwright starts a Vite preview by default. Run the same suite against Compose with `WOHIN_TEST_URL=http://localhost:3000 npm run test:e2e`. Layout screenshots are saved in the ignored `frontend/test-results/` directory.
 
 ## Try the demo

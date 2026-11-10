@@ -7,7 +7,7 @@ Stand: Grundgerüst (G01, #5). Was hier als **geplant** markiert ist, existiert 
 | Pfad | Zuständigkeit |
 | --- | --- |
 | `backend/` | Django-Projekt mit Django REST Framework. Stellt die REST-API unter `/api/v1/` bereit und ist die einzige Komponente mit Zugriff auf PostgreSQL. Details: [backend/README.md](../backend/README.md). |
-| `frontend/` | React-Anwendung mit TypeScript und Vite. Spricht das Backend ausschließlich über relative Pfade unter `/api/` an (im Entwicklungsbetrieb über den Vite-Proxy). |
+| `frontend/` | React-Anwendung mit TypeScript und Vite. Spricht das Backend ausschließlich über den zentralen Client `src/api/client.ts` und relative Pfade unter `/api/` an (im Entwicklungsbetrieb über den Vite-Proxy). Die technische Seite `/status` prüft die Verbindung. |
 | `docs/` | Projekt- und Entwicklerdokumentation: Aufbau, Einrichtung, API-Konventionen, Entscheidungen. |
 | `compose.yaml` | Lokale Entwicklungsumgebung für Frontend, Backend und PostgreSQL. **Ausbau zu drei Services in G04 (#8).** |
 
