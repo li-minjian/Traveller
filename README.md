@@ -12,7 +12,7 @@ docker compose up --build -d   # build and start all services
 docker compose ps              # all three services become healthy
 ```
 
-The backend applies pending database migrations on every start.
+The backend applies pending database migrations on every start. To load the bundled TravelPlanner benchmark cases (historical reference data, 1,225 cases, no download needed), run `docker compose exec backend python manage.py import_reference_cases`. Repeating it is safe. Details are in [backend/README.md](backend/README.md#referenzdaten-importieren).
 
 | Service | Address |
 | --- | --- |
