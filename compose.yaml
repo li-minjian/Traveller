@@ -33,6 +33,9 @@ services:
     command: >-
       sh -c "python manage.py migrate --noinput
       && exec python manage.py runserver 0.0.0.0:8000"
+    # If the database is not reachable yet (e.g. during `docker compose
+    # restart`), migrate fails; Docker then retries until it is.
+    restart: on-failure
     env_file: .env
     environment:
       POSTGRES_HOST: db

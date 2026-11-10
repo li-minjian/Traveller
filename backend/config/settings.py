@@ -113,4 +113,6 @@ LOGGING = {
         "console": {"class": "logging.StreamHandler", "formatter": "plain"},
     },
     "root": {"handlers": ["console"], "level": "INFO"},
+    # Client errors (4xx) are part of normal API use; log server errors only.
+    "loggers": {"django.request": {"level": "ERROR"}},
 }
