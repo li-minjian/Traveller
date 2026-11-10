@@ -9,7 +9,7 @@ Stand: Grundgerüst (G01, #5). Was hier als **geplant** markiert ist, existiert 
 | `backend/` | Django-Projekt mit Django REST Framework. Stellt die REST-API unter `/api/v1/` bereit und ist die einzige Komponente mit Zugriff auf PostgreSQL. Details: [backend/README.md](../backend/README.md). |
 | `frontend/` | React-Anwendung mit TypeScript und Vite. Spricht das Backend ausschließlich über den zentralen Client `src/api/client.ts` und relative Pfade unter `/api/` an (im Entwicklungsbetrieb über den Vite-Proxy). Die technische Seite `/status` prüft die Verbindung. |
 | `docs/` | Projekt- und Entwicklerdokumentation: Aufbau, Einrichtung, API-Konventionen, Entscheidungen. |
-| `compose.yaml` | Lokale Entwicklungsumgebung für Frontend, Backend und PostgreSQL. **Ausbau zu drei Services in G04 (#8).** |
+| `compose.yaml` | Lokale Entwicklungsumgebung mit den Services `frontend` (Vite, Port 3000), `backend` (Django, Port 8000) und `db` (PostgreSQL ohne Host-Port, Daten im Volume `postgres-data`). Quellcode per Bind-Mount, Änderungen greifen ohne Rebuild. Die Frontend-Abhängigkeiten liegen im Volume `frontend-node-modules`. |
 
 Weitere Services des Prototyps (z. B. Journey Planner, Flight Service) kommen später als eigene Verzeichnisse auf oberster Ebene hinzu (IN01 #29, IN02 #42). Sie gehören nicht zum Grundgerüst.
 

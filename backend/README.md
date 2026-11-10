@@ -27,9 +27,21 @@ Für die lokale Entwicklung stehen funktionierende Werte in [`.env.example`](../
 
 Fehlt eine Pflichtvariable oder ist sie leer, bricht Django beim Start mit einer klaren Meldung ab, zum Beispiel `Environment variable DJANGO_SECRET_KEY is not set.` Ist eine optionale Variable leer, gilt ihr Standardwert.
 
-## Lokal starten
+## Starten
 
-Diese Anleitung gilt, bis Docker Compose alle Dienste startet (G04, #8). Voraussetzungen sind Docker und Python 3.14. Python 3.13 funktioniert ebenfalls.
+Standard ist Docker Compose aus dem Repo-Root, siehe [README](../README.md#run-with-docker):
+
+```sh
+cp .env.example .env
+docker compose up --build -d
+docker compose exec backend python manage.py migrate
+```
+
+Django-Befehle laufen dann mit `docker compose exec backend python manage.py <befehl>`. Nach einer Modelländerung erzeugt zum Beispiel `makemigrations` die Migration. Sie landet über den Bind-Mount direkt in `backend/` und wird zusammen mit der Änderung eingecheckt.
+
+### Ohne Docker für das Backend
+
+Zum Debuggen in der IDE kann das Backend auch direkt mit Python 3.14 laufen, Python 3.13 funktioniert ebenfalls. Weil die Compose-Datenbank keinen Host-Port hat, läuft PostgreSQL dafür als einzelner Container. Ein laufendes Compose-Backend blockiert Port 8000, deshalb vorher `docker compose stop backend` ausführen.
 
 ```sh
 # Im Repo-Root: lokale Konfiguration anlegen
@@ -49,8 +61,6 @@ python manage.py runserver
 ```
 
 Danach antwortet `http://localhost:8000/api/v1/health/`. Mit `docker stop traveller-db` bzw. `docker start traveller-db` bleiben die Daten erhalten. Erst `docker rm -v traveller-db` löscht sie.
-
-Nach einer Modelländerung erzeugt `python manage.py makemigrations` die passende Migration. Sie wird zusammen mit der Änderung eingecheckt.
 
 ## Endpunkte
 
