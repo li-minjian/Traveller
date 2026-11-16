@@ -45,6 +45,7 @@ Startreihenfolge: Das Backend startet erst, wenn die Datenbank ihren Healthcheck
 | `frontend/src/features/` | Seiten; bisher die Statusseite `SystemStatus.tsx` |
 | `frontend/src/app/`, `frontend/src/components/` | Routing, Layout und gemeinsame Bausteine |
 | `frontend/tests/` | Unit-Tests (Vitest) |
+| `journey-planner/` | Journey Planner. Bisher nur die Schnittstelle zu den Transportservices (DS1 #21): Vertrag als Python-Paket `domain_services` und `openapi.yaml`, generischer Aufrufer, Mock-Services für Flug, Bahn und Taxi, Tests. Siehe [DS1_CONTRACT.md](../journey-planner/docs/DS1_CONTRACT.md). Der Service selbst ist **geplant** (JP01 #38). |
 | `docs/` | Projekt- und Entwicklerdokumentation |
 | `compose.yaml` | lokale Entwicklungsumgebung mit `frontend`, `backend` und `db` |
 | `.env.example` | lokale Beispielkonfiguration; die eigene `.env` wird nicht eingecheckt |

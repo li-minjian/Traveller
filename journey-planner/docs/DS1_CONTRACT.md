@@ -1,0 +1,230 @@
+# DS1 – Schnittstelle Journey Planner ↔ Transportservices
+
+Ticket: [DS1 #21](https://github.com/li-minjian/Traveller/issues/21) · Vertragsversion **1.0** · Status: **Entwurf zur Abstimmung** mit den Journey-Planner-Verantwortlichen (JP01–JP03) und DS2/DS6.
+
+Dieses Dokument legt fest, wie der Journey Planner **jeden** Transportservice (Flug, Bahn, Taxi/Ride-Hailing, später Bus, Fähre) anfragt. Der Journey Planner kennt nur diesen Vertrag, keine Anbieter-APIs. Wie ein Service intern seine Anbieter anbindet (Provider-Adapter), regelt DS2 (#23).
+
+```text
+Journey Planner
+   │  search_journeys(JourneySearchRequest) -> JourneySearchResult
+   ▼
+TransportService  ──  "flight"  ──  Provider-Adapter  ──  Flug-APIs
+                  ──  "train"   ──  Provider-Adapter  ──  Bahn-APIs
+                  ──  "taxi"    ──  Provider-Adapter  ──  Taxi-/Uber-APIs
+                  ──  "bus" …   (später)
+```
+
+| Datei | Inhalt |
+| --- | --- |
+| [`domain_services/contract.py`](../domain_services/contract.py) | Vertrag als Python-Typen und `TransportService`-Protocol, prüft alle Regeln beim Anlegen |
+| [`domain_services/gateway.py`](../domain_services/gateway.py) | generischer Aufrufer `search_one` / `search_all` mit Timeout |
+| [`domain_services/http_binding.py`](../domain_services/http_binding.py) | Abbildung auf HTTP/JSON (Statuscodes, Fehlerformat) |
+| [`openapi.yaml`](../openapi.yaml) | derselbe Vertrag als OpenAPI 3.1 für unabhängig deployte Services |
+| [`domain_services/mocks.py`](../domain_services/mocks.py) | drei Mock-Services `flight`, `train` und `taxi` |
+| [`examples/`](../examples/) | Beispiel-Requests und -Responses, echte Ausgabe der Mocks, von den Tests geprüft |
+
+## 1. Operation
+
+**In-Process (Python):**
+
+```python
+class TransportService(Protocol):
+    @property
+    def service_id(self) -> str: ...            # "flight", "train", "taxi", …
+    async def search_journeys(self, request: JourneySearchRequest) -> JourneySearchResult: ...
+```
+
+**Über HTTP:** `POST /api/v1/journey-searches/` mit dem Request als JSON-Body. Jeder Transportservice bietet genau diesen Endpunkt an. Details in [`openapi.yaml`](../openapi.yaml).
+
+Beide Formen sind gleichwertig: `to_dict()`/`from_dict()` erzeugen und lesen genau das JSON aus `openapi.yaml`. Welche Form der Prototyp nutzt, entscheidet IN01 (#29).
+
+**Regeln für Services:**
+
+- `search_journeys` meldet alle erwartbaren Fehler (Timeout beim Anbieter, Rate Limit, Ausfall, kaputte Anbieterantwort) **als Ergebnis mit passendem `status`** und wirft dafür keine Exception.
+- `result.service_id` ist gleich `service.service_id`.
+- Anbieterspezifische Codes, IDs und Fehlertypen verlassen den Service nicht.
+
+**Regeln für den Aufrufer:** Der Journey Planner ruft Services nur über `gateway.search_one` / `search_all` auf. Diese setzen einen Timeout (Standard 10 s), fragen mehrere Services parallel ab und machen aus Hängen, Exceptions und vertragswidrigen Antworten ein Ergebnis mit `status: unavailable`. Ein defekter Service betrifft nur sein eigenes Ergebnis.
+
+## 2. Request
+
+```json
+{
+  "origin_id": "berlin",
+  "destination_id": "munich",
+  "departure_after": "2026-12-15T06:00:00+01:00",
+  "departure_before": "2026-12-15T14:00:00+01:00",
+  "passengers": [{"age": 34}, {"age": 8}]
+}
+```
+
+Taxifahrt innerhalb Berlins, von einer Adresse zum Flughafen ([`examples/request-taxi.json`](../examples/request-taxi.json)):
+
+```json
+{
+  "origin_id": "berlin",
+  "destination_id": "berlin",
+  "origin_coordinates": {"latitude": 52.5251, "longitude": 13.3694},
+  "destination_coordinates": {"latitude": 52.3667, "longitude": 13.5033},
+  "departure_after": "2026-12-15T05:30:00+01:00",
+  "departure_before": null,
+  "passengers": [{"age": 34}, {"age": 8}]
+}
+```
+
+| Feld | Pflicht | Regel |
+| --- | --- | --- |
+| `origin_id`, `destination_id` | ja | Gemeinsame Orts-ID auf **Stadtebene**, kleingeschriebener Slug (`berlin`, `frankfurt-am-main`). Der Service übersetzt sie in Bahnhöfe/Flughäfen seiner Anbieter. Beide verschieden, außer `origin_coordinates` und `destination_coordinates` sind angegeben (Fahrt innerhalb einer Stadt). |
+| `origin_coordinates`, `destination_coordinates` | nein | Genauer Start-/Zielpunkt (Hotel, Adresse) als `{"latitude", "longitude"}` (WGS 84). Für Tür-zu-Tür-Services wie Taxi; andere Services dürfen sie ignorieren. Fehlen sie, rechnet ein Taxi-Service ab bzw. bis Stadtmitte. Adressen in Koordinaten umzuwandeln (Geocoding) ist nicht Teil von DS1. |
+| `departure_after` | ja | Früheste Abfahrt (inklusive). ISO 8601 **mit Offset**, Ortszeit des Startorts. Ohne Offset gibt es einen Validierungsfehler (strenger als API-Konventionen §6, weil Ortszeiten ohne Offset mehrdeutig sind). |
+| `departure_before` | nein | Späteste Abfahrt (inklusive), muss nach `departure_after` liegen. Fehlt sie oder ist sie `null`, entscheidet der Service, mindestens bis Ende des Ortstags. |
+| `passengers` | nein | Ein Eintrag pro Reisendem, 1 bis 9 Einträge. Fehlt es, gilt ein Reisender ohne Altersangabe. |
+| `passengers[].age` | nein | Alter in Jahren am Reisetag, 0–120. Fehlt es oder ist es `null`, behandelt der Service die Person wie einen Erwachsenen. Services nutzen bekannte Alter für Tarife (Kind, Kleinkind, Senior); ab welchem Alter welcher Tarif gilt, entscheidet der Service bzw. Anbieter, nicht der Vertrag. |
+
+Unbekannte Felder werden ignoriert (API-Konventionen §5). Filter wie Budget, maximale Umstiege oder Ranking gehören **nicht** in den Request: das macht der Journey Planner (JP03) auf den Ergebnissen.
+
+## 3. Response
+
+Gekürzt aus [`examples/result-success.json`](../examples/result-success.json) (2 Reisende, 34 und 8 Jahre: Kindertarif im Preis enthalten):
+
+```json
+{
+  "contract_version": "1.0",
+  "service_id": "flight",
+  "status": "success",
+  "journeys": [
+    {
+      "id": "mock-airline-ma100-2026-12-15",
+      "provider_id": "mock-airline",
+      "legs": [
+        {
+          "mode": "flight",
+          "origin": {"location_id": "berlin", "name": "Berlin Brandenburg Airport", "code": "BER", "coordinates": null},
+          "destination": {"location_id": "munich", "name": "Munich Airport", "code": "MUC", "coordinates": null},
+          "departure_at": "2026-12-15T07:05:00+01:00",
+          "arrival_at": "2026-12-15T08:15:00+01:00",
+          "operator": "Mock Air",
+          "service_number": "MA 100",
+          "is_on_demand": false
+        }
+      ],
+      "offers": [
+        {
+          "id": "mock-airline-ma100-2026-12-15-0",
+          "provider_id": "mock-airline",
+          "price": {"amount": 155.75, "currency": "EUR", "basis": "trip_total"},
+          "price_upper": null,
+          "availability": "available",
+          "is_price_estimate": false,
+          "fare_name": "Economy Light",
+          "booking_url": null
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "retrieved_at": "2026-11-16T09:30:00Z"
+}
+```
+
+### Datenmodell
+
+```text
+JourneySearchResult ─┬─ journeys: Journey[]  ─┬─ legs:   Leg[]   (≥ 1, in Reihenfolge)
+                     │                        └─ offers: Offer[] | null
+                     └─ errors:   ServiceError[]
+```
+
+| Objekt | Felder | Regeln |
+| --- | --- | --- |
+| **Journey** | `id`, `provider_id`, `legs`, `offers` | Eine vollständige Verbindung vom Start zum Ziel. **Mehrere Legs** = Umstiege. `id` ist im Ergebnis eindeutig. |
+| **Leg** | `mode`, `origin`, `destination`, `departure_at`, `arrival_at`, `operator`, `service_number`, `is_on_demand` | Eine Fahrt in einem Fahrzeug. `mode`: `flight`, `train`, `bus`, `ferry`, `taxi`. Zeiten in Ortszeit mit Offset. Jedes Leg fährt nicht vor der Ankunft des vorigen ab. `is_on_demand: true` = kein Fahrplan, das Fahrzeug kommt bei Buchung (Taxi): `departure_at` ist die früheste Abholung, `arrival_at` eine Schätzung. |
+| **Stop** | `location_id`, `name`, `code`, `coordinates` | `location_id` wie im Request (Stadt), `name`/`code` für den konkreten Bahnhof oder Flughafen (`BER`), `coordinates` für den genauen Punkt, falls bekannt (bei Taxi immer). |
+| **Offer** | `id`, `provider_id`, `price`, `price_upper`, `availability`, `is_price_estimate`, `fare_name`, `booking_url` | Ein Tarif für die ganze Journey, bei Taxi eine Fahrzeugklasse (`Standard`, `XL`). `availability`: `available`, `sold_out`, `unknown`. `is_price_estimate: true` = Preis aus Fahrplan-/Tarifdaten oder Fahrpreisschätzung, kein bestätigtes, buchbares Angebot. `price_upper`: Obergrenze, wenn der Anbieter nur eine Spanne nennt (typisch bei Uber & Co., „23–29 €“); `price` ist dann die Untergrenze. |
+| **Money** | `amount`, `currency`, `basis` | Wie API-Konventionen §7. `basis`: `trip_total` (alle Reisenden) oder `per_person`. |
+
+Abgeleitete Werte wie Gesamtdauer, Umstiege oder günstigster Preis werden nicht übertragen, sondern aus den Legs berechnet (`Journey.duration_minutes`, `transfer_count`, `cheapest_known_price()`).
+
+### Taxi und Ride-Hailing
+
+Taxi und Uber-artige Dienste laufen über denselben Vertrag, als Service `taxi` mit `mode: taxi`. Welcher Anbieter (Taxizentrale, Uber, Bolt) eine Fahrt stellt, steht in `provider_id` und `operator`; ein eigener Modus pro Anbieter ist nicht nötig. Besonderheiten:
+
+- Start und Ziel kommen bevorzugt aus `origin_coordinates`/`destination_coordinates`, sonst gilt die Stadtmitte.
+- Eine Journey hat ein Leg mit `is_on_demand: true`; die Ankunft ist geschätzt.
+- Preise gelten pro Fahrzeug (`basis: trip_total`), sind immer `is_price_estimate: true` und oft eine Spanne (`price`–`price_upper`).
+- Angebote gibt es nur für Fahrzeugklassen mit genug Plätzen für alle Reisenden. Passt keine, ist `offers: []`.
+- Der Journey Planner kann Taxi-Journeys als Zubringer mit anderen Journeys kombinieren (z. B. Hotel → Flughafen); das ist Aufgabe des Journey Planners, nicht des Services.
+
+### Fehlende Informationen
+
+Jedes dokumentierte Feld ist immer vorhanden (API-Konventionen §5). Fehlendes wird so dargestellt:
+
+| Situation | Darstellung |
+| --- | --- |
+| Preis unbekannt | `"price": null`, **nie** `amount: 0` |
+| Preis ist keine Spanne | `"price_upper": null` |
+| genauer Punkt unbekannt | `"coordinates": null` |
+| Alter eines Reisenden nicht angegeben (Request) | `"age": null` oder Feld weglassen |
+| Quelle liefert gar keine Tarife (z. B. nur Fahrplan) | `"offers": null` |
+| Bekanntermaßen keine Angebote (z. B. Buchung noch nicht offen) | `"offers": []` |
+| Verfügbarkeit unbekannt | `"availability": "unknown"` |
+| Name, Code, Betreiber, Nummer, Buchungslink unbekannt | `null` |
+
+## 4. Status- und Fehlerfälle
+
+`status` sagt, wie verlässlich das Ergebnis ist. **Nur `no_results` heißt „es gibt keine Verbindung“.** Alle anderen Status ohne Journeys heißen „wir wissen es nicht“. `result.is_complete` ist genau bei `success` und `no_results` wahr.
+
+| `status` | Bedeutung | `journeys` | `errors` | HTTP |
+| --- | --- | --- | --- | --- |
+| `success` | alle Anbieter haben geantwortet, Treffer vorhanden | ≥ 1 | keine | 200 |
+| `no_results` | alle Anbieter haben geantwortet, kein Treffer | leer | keine | 200 |
+| `partial` | mindestens ein Anbieter ist ausgefallen, die anderen haben geantwortet | beliebig, auch leer | ≥ 1 mit `provider_id` | 200 |
+| `unavailable` | kein Anbieter hat geantwortet oder der Service selbst ist nicht erreichbar | leer | ≥ 1 | 200, bzw. 5xx/keine Antwort beim Service selbst |
+| `invalid_request` | der Service lehnt die Anfrage ab | leer | nur `validation_error` | 400 im Fehlerformat der API-Konventionen |
+
+Diese Kombinationen prüft `JourneySearchResult` beim Anlegen; ein Service kann kein widersprüchliches Ergebnis bauen. `JourneySearchResult.from_journeys(...)` wählt den Status automatisch.
+
+**ServiceError:** `code`, `message`, `provider_id` (welcher Anbieter, sonst `null`), `field` (nur bei `validation_error`), `is_retryable`.
+
+| `code` | Wann | `is_retryable` |
+| --- | --- | --- |
+| `validation_error` | Request ungültig, z. B. Orts-ID unbekannt | nein |
+| `timeout` | Anbieter oder Service antwortet nicht rechtzeitig | ja |
+| `rate_limited` | Anbieter drosselt | ja |
+| `provider_unavailable` | Anbieter nicht erreichbar oder meldet Ausfall | ja |
+| `authentication_failed` | Zugangsdaten des Services beim Anbieter ungültig | nein |
+| `invalid_provider_response` | Anbieter antwortet, aber unlesbar | nein |
+| `internal_error` | Fehler im Service selbst oder vertragswidrige Antwort | nein |
+
+Abgrenzung „keine Verbindung“ vs. „ungültig“: Eine gültige Orts-ID, für die ein Service keine Verbindung kennt, ergibt `no_results` (DS6). Eine Orts-ID, die es nicht gibt, ergibt `invalid_request`.
+
+**HTTP:** Ein Ausfall eines Anbieters *hinter* dem Service ist eine normale Antwort (`200` mit `partial`/`unavailable`), weil der Service selbst funktioniert und die Details mitliefern kann. `4xx`/`5xx` bleiben Fehlern des Aufrufs vorbehalten. `http_binding.result_from_http` setzt das auf Aufruferseite um (`429` → `rate_limited`, `502/503/504` und keine Antwort → `provider_unavailable`, sonst `internal_error`).
+
+Beispiele für alle Fälle liegen in [`examples/`](../examples/).
+
+## 5. Mocks
+
+| Service | Anbieter | Strecken (täglich) | zeigt |
+| --- | --- | --- | --- |
+| `flight` | `mock-airline`, `mock-charter` | Berlin → München (3 Flüge), Berlin → Paris (direkt und über Frankfurt) | unbekannter Preis, ausverkaufter Tarif, Umstieg |
+| `train` | `mock-rail` | Berlin → München (2 Züge), Berlin → Paris über Köln | `offers: null`, `offers: []`, Preisschätzung, Umstieg |
+| `taxi` | `mock-taxi` (Festpreis-Schätzung), `mock-ride` (Preisspanne, wie Uber) | beliebige Punkte in Berlin, Potsdam, München, Köln, Frankfurt, Paris; bis 150 km | Koordinaten, `is_on_demand`, `price_upper`, Fahrzeugklassen nach Gruppengröße |
+
+Altersabhängige Tarife der Mocks: Bahn – unter 6 Jahren frei, unter 15 halber Preis; Flug – unter 2 Jahren 10 %, unter 12 Jahren 75 %. Ohne Alter gilt der Erwachsenentarif.
+
+Mit `unavailable_providers=[...]` und `delay_seconds=...` lassen sich Ausfälle (`partial`, `unavailable`) und Timeouts simulieren. Die Tests in [`tests/test_contract.py`](../tests/test_contract.py) fragen alle drei Mocks mit **demselben Code** über `search_all` ab.
+
+## 6. Versionierung
+
+`contract_version` steht in jeder Antwort. Neue optionale Felder oder neue Enum-Werte, die der Aufrufer ignorieren kann, erhöhen die Nebenversion (`1.1`). Entfernen, Umbenennen oder Bedeutungsänderungen erhöhen die Hauptversion und den Pfad (`/api/v2/`). Der Aufrufer lehnt Antworten mit anderer Hauptversion ab.
+
+## 7. Offene Punkte zur Abstimmung
+
+- **Orts-IDs:** Der Vertrag setzt Stadt-Slugs voraus. Woher die Liste kommt (gemeinsame Ortstabelle, Mapping auf IATA/UIC-Codes) ist noch nicht entschieden; bis dahin gelten die Slugs der Mocks.
+- **In-Process oder HTTP** für den Prototyp: Entscheidung in IN01 (#29). Der Vertrag funktioniert für beide.
+- **Timeout-Standard** von 10 s: mit realen Anbietern in DS3/DS4 überprüfen.
+- **Abstimmung mit AG04 (#33):** Der Suchauftrag Agent → Journey Planner soll Journey/Leg/Offer aus diesem Vertrag wiederverwenden.
+
+## Nicht Teil von DS1
+
+Echte Services und Anbieter-Adapter (DS2 #23, DS6 #41), gemeinsame Contract-Tests für alle Services (DS4 #26), Caching (DS5 #27), Kombination von Teilstrecken, Filtern und Ranking (Journey Planner JP02/JP03), Buchung.

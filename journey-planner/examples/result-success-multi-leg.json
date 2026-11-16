@@ -1,0 +1,56 @@
+{
+  "contract_version": "1.0",
+  "service_id": "train",
+  "status": "success",
+  "journeys": [
+    {
+      "id": "mock-rail-ice645-est9450-2026-12-15",
+      "provider_id": "mock-rail",
+      "legs": [
+        {
+          "mode": "train",
+          "origin": {
+            "location_id": "berlin",
+            "name": "Berlin Hbf",
+            "code": null,
+            "coordinates": null
+          },
+          "destination": {
+            "location_id": "cologne",
+            "name": "Köln Hbf",
+            "code": null,
+            "coordinates": null
+          },
+          "departure_at": "2026-12-15T06:46:00+01:00",
+          "arrival_at": "2026-12-15T11:13:00+01:00",
+          "operator": "Mock Rail",
+          "service_number": "ICE 645",
+          "is_on_demand": false
+        },
+        {
+          "mode": "train",
+          "origin": {
+            "location_id": "cologne",
+            "name": "Köln Hbf",
+            "code": null,
+            "coordinates": null
+          },
+          "destination": {
+            "location_id": "paris",
+            "name": "Paris Nord",
+            "code": null,
+            "coordinates": null
+          },
+          "departure_at": "2026-12-15T11:43:00+01:00",
+          "arrival_at": "2026-12-15T15:05:00+01:00",
+          "operator": "Mock Rail",
+          "service_number": "EST 9450",
+          "is_on_demand": false
+        }
+      ],
+      "offers": []
+    }
+  ],
+  "errors": [],
+  "retrieved_at": "2026-11-16T09:30:00Z"
+}

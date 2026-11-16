@@ -1,0 +1,16 @@
+{
+  "contract_version": "1.0",
+  "service_id": "train",
+  "status": "unavailable",
+  "journeys": [],
+  "errors": [
+    {
+      "code": "timeout",
+      "message": "No answer within 10 seconds.",
+      "provider_id": null,
+      "field": null,
+      "is_retryable": true
+    }
+  ],
+  "retrieved_at": "2026-11-16T09:30:00Z"
+}
