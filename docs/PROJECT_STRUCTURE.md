@@ -68,7 +68,8 @@ Startreihenfolge: Das Backend startet erst, wenn die Datenbank und der Journey P
 | `frontend/src/features/` | Seiten: Chat-Seite `Chat.tsx` unter `/chat` (Startseite) und Statusseite `SystemStatus.tsx` unter `/status` |
 | `frontend/src/features/chat/` | Bausteine der Chat-Seite: Reiseformular (`TripForm.tsx`), Ergebniskarten mit Hin- und Rückflug (`Results.tsx`), Entwurf des Formulars und Abgleich mit dem Reise-State (`tripDraft.ts`), Formatierung (`format.ts`) |
 | `frontend/src/app/`, `frontend/src/components/` | Routing, Layout und gemeinsame Bausteine |
-| `frontend/tests/` | Unit-Tests (Vitest) |
+| `frontend/src/mocks/` | Entwicklungs-Mock für `/api/v1/` mit Service Worker und deterministischen Szenarien, siehe [Frontend ohne Backend](DEVELOPMENT.md#frontend-ohne-backend) |
+| `frontend/tests/` | Unit- und React-Komponententests (Vitest), mit denselben Mock-Handlern wie im Entwicklungsmodus |
 | `journey-planner/domain_services/` | DS1-Vertrag zu den Transportservices (DS1 #21): Python-Paket `domain_services` und `openapi.yaml`, generischer Aufrufer, Mock-Services für Flug, Bahn und Taxi, Tests in `journey-planner/tests/`. Siehe [DS1_CONTRACT.md](../journey-planner/docs/DS1_CONTRACT.md). Der Planner nutzt ihn noch nicht. |
 | `docs/` | Projekt- und Entwicklerdokumentation |
 | `docs/contracts/search-v1/` | Beispiele für den Suchauftrag und seine Antworten, für nur den Hinflug und für Hin- und Rückflug; die Tests von Backend und Journey Planner laden genau diese Dateien |

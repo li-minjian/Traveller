@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { defineConfig } from 'vite';
 
 // The frontend calls the backend through relative /api URLs. The dev and
@@ -7,8 +9,21 @@ const apiProxy = {
   '/api': { target: process.env.API_PROXY_TARGET || 'http://localhost:8000' },
 };
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   oxc: { jsx: { runtime: 'automatic' } },
+  plugins: mode === 'mock' ? [{
+    name: 'traveller-mock-worker',
+    apply: 'serve',
+    configureServer(server) {
+      // Serve the installed MSW worker at the root for /api scope.
+      const require = createRequire(import.meta.url);
+      const worker = readFileSync(require.resolve('msw/mockServiceWorker.js'));
+      server.middlewares.use('/mockServiceWorker.js', (_request, response) => {
+        response.setHeader('Content-Type', 'text/javascript');
+        response.end(worker);
+      });
+    },
+  }] : [],
   server: {
     proxy: apiProxy,
     // WATCH_POLLING=true helps where file events do not reach the container,
@@ -19,4 +34,4 @@ export default defineConfig({
         : undefined,
   },
   preview: { proxy: apiProxy },
-});
+}));
