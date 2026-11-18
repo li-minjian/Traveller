@@ -219,15 +219,17 @@ Alle Flüge, Preise, Agentenantworten und Sitzungen in diesem Modus sind simulie
 das Banner `Demo mode · Simulated travel data` macht das sichtbar.
 Es gibt keine echten Buchungen oder einen echten LLM-Aufruf.
 
-Im Vercel-Projekt (Root Directory: `frontend`, Output Directory: `dist`)
-gibt es zwei Wege, die Demo bei einem neuen Deployment einzuschalten:
+Die Datei [`frontend/vercel.json`](../frontend/vercel.json) aktiviert den Demo-Modus
+**explizit für Vercel** mit `buildCommand: npm run build:demo` und
+`outputDirectory: dist`. Voraussetzung: Das Vercel-Projekt verwendet
+`frontend` als Root Directory. Nach dem Merge nach `main` und dem
+erfolgreichen Production-Deployment bleibt die URL unverändert,
+beispielsweise `https://traveller-vs.vercel.app/chat`.
 
-1. **Build-Command `npm run build:demo`** verwenden. Dieses Skript führt
-   `vite build --mode demo` aus. Es benötigt keine Umgebungsvariable.
-2. Alternativ den bisherigen Build-Command `npm run build` beibehalten,
-   die Vercel-Umgebungsvariable `VITE_DEMO_MODE=true` für die gewünschte
-   Deployment-Umgebung setzen und erneut deployen. Der Schalter ist öffentlich
-   im Client sichtbar und **kein Secret**.
+Für andere Hosting-Umgebungen ist der Demo-Build auch ohne `vercel.json`
+möglich: entweder `npm run build:demo` ausführen oder bei `npm run build`
+die Build-Umgebungsvariable `VITE_DEMO_MODE=true` setzen. Diese Variable
+ist **kein Secret** und wird im Browser-Bundle sichtbar.
 
 Im opt-in Demo-Build schreibt Vite den zu der installierten MSW-Version gehörenden
 Worker nach `dist/mockServiceWorker.js` und lädt die Mock-Handler. Der Browser
@@ -252,13 +254,14 @@ Weitere Szenarien: `?scenario=empty`, `?scenario=backend-error`
 und `?scenario=api-error`. Demo-Nachrichten und -Sitzungen werden nur im
 `sessionStorage` des Browser-Tabs gespeichert.
 
-**Zur echten API zurückkehren:** In Vercel `VITE_DEMO_MODE` entfernen oder
-`false` setzen (bzw. den Build-Command auf `npm run build` zurückstellen)
-und ein neues Deployment auslösen. Dann benötigt `/api/v1/` eine funktionierende
-Backend-Route bzw. einen Reverse Proxy. Ein normales `npm run build` ohne
-Demo-Schalter enthält weder Mock-Handler noch `mockServiceWorker.js`.
-Die Vercel-Project-Konfiguration und das aktuell zugewiesene Deployment
-müssen unabhängig vom Code überprüft werden.
+**Zur echten API zurückkehren:** In `frontend/vercel.json` den
+`buildCommand` wieder auf `npm run build` setzen und sicherstellen,
+dass kein `VITE_DEMO_MODE=true` im Vercel-Projekt aktiv ist. Danach ein neues
+Deployment auslösen. Für den Real-Modus muss `/api/v1/` durch eine funktionierende
+Backend-Route oder einen Reverse Proxy bedient werden. Ein normales
+`npm run build` ohne Demo-Schalter enthält keine Mock-Handler und keine Datei
+`mockServiceWorker.js`. Root Directory, Domain und Deployment-Status des
+Vercel-Projekts sind unabhängig vom Repository zu überprüfen.
 
 ### Frontend-CI und Komponententests
 
