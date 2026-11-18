@@ -183,6 +183,49 @@ Die Frontend-Befehle laufen im Container, Node.js wird auf dem eigenen Rechner n
 
 **Stand der Prüfung:** Am 18.11.2026 liefen alle drei Testsuiten im Compose-Setup unter Windows, die Backend-Tests gegen PostgreSQL, alle grün. Das war vor der Erweiterung um den Rückflug. Danach liefen die 41 Tests des Journey Planners lokal ohne Docker, alle grün. Für Backend und Frontend gilt der jeweils letzte eigene Testlauf; eine Zahl steht hier bewusst nicht.
 
+## Frontend ohne Backend
+
+```bash
+cd frontend
+npm ci
+npm run dev:mock
+```
+
+Öffne [localhost:5174/chat](http://localhost:5174/chat). Die Statuszeile
+„Mock API active“ zeigt das aktive Szenario. Der Service Worker beantwortet
+dieselben `/api/v1/`-Anfragen wie Django. Mock-Sitzungen und Verlauf bleiben
+beim Neuladen im selben Browser-Tab verfügbar. Mit „New conversation“ beginnt
+eine neue Sitzung. Port 5174 trennt die Mock-Sitzungen vom üblichen Real-Modus.
+
+| Szenario | Ablauf |
+| --- | --- |
+| `/chat` | Zuerst z. B. `I want to travel` senden, um eine Rückfrage zu sehen. Im Reiseformular Angaben ändern und mit „Apply changes“ übernehmen. Für einen Treffer `Berlin to Lissabon` senden und den angenommenen Zielort mit `yes` bestätigen. Der Beispieldatensatz enthält einen Direktflug am 20.05.2027. |
+| `/chat?scenario=empty` | Dieselbe Beispielroute bestätigen. Die Antwort meldet keine Treffer. |
+| `/chat?scenario=backend-error` | Eine Nachricht senden. Der Chat erhält HTTP 503. |
+| `/chat?scenario=api-error` | Eine Nachricht senden. Der Chat erhält einen Validierungsfehler mit HTTP 400. |
+
+Die Demo verwendet festgelegte Antworten und eine Flug-Fixture aus dem
+Suchvertrag. Weitere Orte, Daten, Rückflüge und freie Sprachinterpretation
+können im Real-Modus mit der Backend-API ausprobiert werden. Für den Real-Modus
+`npm run dev` starten und die angezeigte URL öffnen. Der Vite-Proxy nutzt lokal
+standardmäßig Django auf Port 8000, unter Compose den Service `backend`. Der
+Produktionsbuild startet keinen Worker und enthält keine Mock-Handler.
+
+### Frontend-CI und Komponententests
+
+Der Workflow [Frontend CI](../.github/workflows/frontend-ci.yml) läuft mit
+Node 24 bei Pull Requests mit Änderungen unter `frontend/` oder am Workflow.
+Lokal entsprechen die Schritte `npm ci`, `npm run typecheck`, `npm run lint`,
+`npm test` und `npm run build` im Verzeichnis `frontend/` der CI.
+
+Die bestehenden Unit-Tests und die React-Komponententests laufen ohne Dienste
+und Zugangsdaten. Die Komponententests nutzen Vitest, jsdom, React Testing
+Library, `user-event` und dieselben HTTP-Handler wie der Mock-Modus. Sie prüfen
+Chat-Eingabe, Wartezustand, Rückfrage und Bestätigung, Formularänderungen,
+Sitzungsverlauf, Flugkarten, keine Treffer und API-Fehler. Browserübergreifende
+Layout- und Accessibility-Abnahme sowie produktbezogene Ende-zu-Ende-Flüsse
+bleiben Teil von [F08 #20](https://github.com/li-minjian/Traveller/issues/20).
+
 ## Ohne Docker arbeiten
 
 Für Debugging in der IDE kann das Backend direkt mit Python laufen. Die Compose-Datenbank hat keinen Host-Port, deshalb läuft PostgreSQL dafür als einzelner Container. Vorher `docker compose stop backend` ausführen, weil das Compose-Backend sonst Port 8000 belegt.
