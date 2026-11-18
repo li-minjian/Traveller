@@ -1,0 +1,141 @@
+{
+  "contract_version": "1.0",
+  "service_id": "taxi",
+  "status": "success",
+  "journeys": [
+    {
+      "id": "mock-ride-20261215T0530",
+      "provider_id": "mock-ride",
+      "legs": [
+        {
+          "mode": "taxi",
+          "origin": {
+            "location_id": "berlin",
+            "name": null,
+            "code": null,
+            "coordinates": {
+              "latitude": 52.5251,
+              "longitude": 13.3694
+            }
+          },
+          "destination": {
+            "location_id": "berlin",
+            "name": null,
+            "code": null,
+            "coordinates": {
+              "latitude": 52.3667,
+              "longitude": 13.5033
+            }
+          },
+          "departure_at": "2026-12-15T05:30:00+01:00",
+          "arrival_at": "2026-12-15T06:08:00+01:00",
+          "operator": "Mock Ride",
+          "service_number": null,
+          "is_on_demand": true
+        }
+      ],
+      "offers": [
+        {
+          "id": "mock-ride-20261215T0530-0",
+          "provider_id": "mock-ride",
+          "price": {
+            "amount": 52.02,
+            "currency": "EUR",
+            "basis": "trip_total"
+          },
+          "price_upper": {
+            "amount": 65.03,
+            "currency": "EUR",
+            "basis": "trip_total"
+          },
+          "availability": "available",
+          "is_price_estimate": true,
+          "fare_name": "Standard",
+          "booking_url": null
+        },
+        {
+          "id": "mock-ride-20261215T0530-1",
+          "provider_id": "mock-ride",
+          "price": {
+            "amount": 72.08,
+            "currency": "EUR",
+            "basis": "trip_total"
+          },
+          "price_upper": {
+            "amount": 90.1,
+            "currency": "EUR",
+            "basis": "trip_total"
+          },
+          "availability": "available",
+          "is_price_estimate": true,
+          "fare_name": "XL",
+          "booking_url": null
+        }
+      ]
+    },
+    {
+      "id": "mock-taxi-20261215T0530",
+      "provider_id": "mock-taxi",
+      "legs": [
+        {
+          "mode": "taxi",
+          "origin": {
+            "location_id": "berlin",
+            "name": null,
+            "code": null,
+            "coordinates": {
+              "latitude": 52.5251,
+              "longitude": 13.3694
+            }
+          },
+          "destination": {
+            "location_id": "berlin",
+            "name": null,
+            "code": null,
+            "coordinates": {
+              "latitude": 52.3667,
+              "longitude": 13.5033
+            }
+          },
+          "departure_at": "2026-12-15T05:30:00+01:00",
+          "arrival_at": "2026-12-15T06:08:00+01:00",
+          "operator": "Mock Taxi",
+          "service_number": null,
+          "is_on_demand": true
+        }
+      ],
+      "offers": [
+        {
+          "id": "mock-taxi-20261215T0530-0",
+          "provider_id": "mock-taxi",
+          "price": {
+            "amount": 76.54,
+            "currency": "EUR",
+            "basis": "trip_total"
+          },
+          "price_upper": null,
+          "availability": "available",
+          "is_price_estimate": true,
+          "fare_name": "Taxi",
+          "booking_url": null
+        },
+        {
+          "id": "mock-taxi-20261215T0530-1",
+          "provider_id": "mock-taxi",
+          "price": {
+            "amount": 83.54,
+            "currency": "EUR",
+            "basis": "trip_total"
+          },
+          "price_upper": null,
+          "availability": "available",
+          "is_price_estimate": true,
+          "fare_name": "Großraumtaxi",
+          "booking_url": null
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "retrieved_at": "2026-11-16T09:30:00Z"
+}

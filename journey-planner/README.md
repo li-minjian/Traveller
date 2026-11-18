@@ -4,7 +4,7 @@ Eigener Service mit Django 5.2 LTS und Django REST Framework, Python 3.14, Port 
 
 Das Format von Auftrag und Antwort steht in [docs/SEARCH_CONTRACT.md](../docs/SEARCH_CONTRACT.md), die Einordnung in [docs/ARCHITECTURE_PROTOTYPE.md](../docs/ARCHITECTURE_PROTOTYPE.md).
 
-**Stand:** Flüge kommen bisher aus einem Dummy-Provider mit erfundenen Beispielflügen zwischen 30 europäischen Städten. Der echte Flight Service (DS6 #41) und der Vertrag DS1 (#21) fehlen noch. Wie man ihn anbindet, steht unten unter [Einen echten Verkehrs-Service anbinden](#einen-echten-verkehrs-service-anbinden). Die 41 Tests laufen lokal ohne Docker, zuletzt am 18.11.2026, alle grün. Das Docker-Image und der Compose-Service `journey-planner` wurden am 18.11.2026 unter Windows gebaut und gestartet; das war vor der Erweiterung um den Rückflug.
+**Stand:** Flüge kommen bisher aus einem Dummy-Provider mit erfundenen Beispielflügen zwischen 30 europäischen Städten. Der Vertrag DS1 (#21) zwischen Planner und Verkehrs-Services liegt im Paket [`domain_services/`](#ds1-schnittstelle-zu-den-domain-services-domain_services), siehe [docs/DS1_CONTRACT.md](docs/DS1_CONTRACT.md); der Planner nutzt ihn noch nicht. Echte Verkehrs-Services (DS2, DS6 #41) fehlen noch. Wie man ihn anbindet, steht unten unter [Einen echten Verkehrs-Service anbinden](#einen-echten-verkehrs-service-anbinden). Die 41 Tests laufen lokal ohne Docker, zuletzt am 18.11.2026, alle grün. Das Docker-Image und der Compose-Service `journey-planner` wurden am 18.11.2026 unter Windows gebaut und gestartet; das war vor der Erweiterung um den Rückflug.
 
 ## Aufbau
 
@@ -20,6 +20,9 @@ Das Format von Auftrag und Antwort steht in [docs/SEARCH_CONTRACT.md](../docs/SE
 | `planner/errors.py` | einheitliches Fehlerformat wie im Backend, siehe [API-Konventionen](../docs/API_CONVENTIONS.md#4-fehlerformat) |
 | `planner/testing.py` | Test-Runner ohne Datenbank |
 | `planner/tests.py` | Tests für Endpunkte, Filter, Rangfolge, Hin- und Rückflug, Provider-Ausfall und die Beispielflüge |
+| `domain_services/` | DS1-Vertrag zu den Domain Services (Marvin): Request, Response (`Journey`/`Leg`/`Offer`), Status, Fehler, generischer Aufrufer, HTTP-Abbildung, Mocks für Flug, Bahn und Taxi; siehe [unten](#ds1-schnittstelle-zu-den-domain-services-domain_services) |
+| `openapi.yaml`, `examples/`, `docs/DS1_CONTRACT.md` | DS1 als OpenAPI 3.1, Beispiel-JSON für alle Status, ausführliche Beschreibung |
+| `tests/test_contract.py` | Tests für DS1-Vertrag, Aufrufer, Mocks und HTTP-Abbildung |
 | `requirements.txt` | exakt gepinnte Abhängigkeiten, dieselben Versionen von Django und DRF wie im Backend |
 | `Dockerfile` | Image für die Entwicklung; Compose bindet den Quellcode ein |
 
@@ -113,6 +116,48 @@ Die Provider werden nacheinander und synchron abgefragt, bei Hin- und Rückflug 
 - **Preise:** in EUR pro Person. Dienstag und Mittwoch sind 15 % günstiger, Freitag und Sonntag 25 % teurer, damit sich ein flexibler Zeitraum lohnen kann.
 - **Absichtlich zu knapp:** Die Verbindung Berlin–Lissabon über Frankfurt hat nur 25 Minuten Umsteigezeit. Bei den erzeugten Verbindungen mit einem Umstieg hat etwa jede zwölfte nur 30 Minuten, die übrigen 55 bis 170 Minuten. Daran zeigt sich die Prüfung des Optimization Agent im Backend, der unter 45 Minuten warnt.
 - **Zeitraum:** höchstens 31 Tage ab `departure.earliest`.
+
+## DS1-Schnittstelle zu den Domain Services (`domain_services/`)
+
+Das Paket legt das einheitliche Format fest, in dem der Journey Planner die Transportservices abfragt (DS1 #21). Es nutzt nur die Python-Standardbibliothek (Python ≥ 3.12).
+
+```python
+from domain_services import JourneySearchRequest, search_all
+from domain_services.mocks import mock_flight_service, mock_taxi_service, mock_train_service
+
+request = JourneySearchRequest.from_dict({
+    "origin_id": "berlin",
+    "destination_id": "munich",
+    "departure_after": "2026-12-15T06:00:00+01:00",
+    "passengers": [{"age": 34}, {"age": 8}],
+})
+results = await search_all([mock_flight_service(), mock_train_service(), mock_taxi_service()], request)
+for result in results:
+    print(result.service_id, result.status, len(result.journeys))
+```
+
+Der Vertrag, alle Regeln und Status- und Fehlerfälle: **[docs/DS1_CONTRACT.md](docs/DS1_CONTRACT.md)**.
+
+| Pfad | Inhalt |
+| --- | --- |
+| `domain_services/contract.py` | Request (Reisende mit optionalem Alter, optionale Koordinaten), Response (`Journey`/`Leg`/`Offer`), Status, Fehler, `TransportService`-Protocol |
+| `domain_services/gateway.py` | generischer Aufrufer mit Timeout, parallel über alle Services |
+| `domain_services/http_binding.py` | Abbildung auf HTTP/JSON |
+| `domain_services/mocks.py` | Mock-Services `flight`, `train` und `taxi` |
+| `openapi.yaml` | Vertrag als OpenAPI 3.1 |
+| `examples/` | Beispiel-JSON für Request, alle Status und den Validierungsfehler |
+| `tests/` | Tests für Vertrag, Aufrufer, Mocks und HTTP-Abbildung |
+
+Die DS1-Tests laufen mit `python manage.py test` zusammen mit den Planner-Tests, oder einzeln ohne Django:
+
+```sh
+cd journey-planner
+python3 -m unittest tests.test_contract -v
+```
+
+Sie brauchen kein Netz und keine Zugangsdaten. Sind `jsonschema` und `pyyaml` installiert, prüft ein zusätzlicher Test die Beispiele gegen `openapi.yaml`; sonst wird er übersprungen. Ändert sich die Ausgabe der Mocks, müssen die Dateien in `examples/` angepasst werden, sonst schlägt `test_examples_match_mock_output` fehl.
+
+**Offen:** Der Planner fragt seine Provider noch über die eigene Schnittstelle `TransportProvider` (`planner/providers/base.py`) und kennt DS1 noch nicht. Der nächste Schritt ist ein Provider, der den Suchauftrag in einen `JourneySearchRequest` übersetzt, über `domain_services.gateway` die DS1-Services abfragt und deren `Journey`/`Leg`/`Offer` zurückgibt. Dabei müssen zwei Punkte abgestimmt werden: Orts-IDs (`origin_id`) statt Ortsnamen und das Antwortformat gegenüber [docs/SEARCH_CONTRACT.md](../docs/SEARCH_CONTRACT.md).
 
 ## Einen echten Verkehrs-Service anbinden
 

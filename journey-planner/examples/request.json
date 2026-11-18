@@ -1,0 +1,16 @@
+{
+  "origin_id": "berlin",
+  "destination_id": "munich",
+  "origin_coordinates": null,
+  "destination_coordinates": null,
+  "departure_after": "2026-12-15T06:00:00+01:00",
+  "departure_before": "2026-12-15T14:00:00+01:00",
+  "passengers": [
+    {
+      "age": 34
+    },
+    {
+      "age": 8
+    }
+  ]
+}

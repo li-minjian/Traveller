@@ -41,6 +41,7 @@ Im Chat fragt der Main-Agent die Reisedaten ab und zeigt dann Flugvarianten für
 | [Definition of Done](docs/DEFINITION_OF_DONE.md) | gemeinsame Kriterien für jedes Ticket, Doku im selben Pull Request |
 | [Architektur des Prototyps](docs/ARCHITECTURE_PROTOTYPE.md) | Services, Kommunikation, Aufteilung zwischen Code und LLM, offene Punkte |
 | [Suchauftrag](docs/SEARCH_CONTRACT.md) | Format zwischen Main-Agent und Journey Planner mit Beispielen |
+| [Journey Planner: Schnittstelle zu den Domain Services (DS1)](journey-planner/docs/DS1_CONTRACT.md) | einheitlicher Vertrag `search_journeys` für Flug, Bahn und Taxi/Ride-Hailing, Request/Response, Status- und Fehlerfälle, Mocks, OpenAPI |
 | [Backend](backend/README.md) | Aufbau des Backends und häufige Befehle |
 | [Journey Planner](journey-planner/README.md) | Aufbau des Planners, Endpunkt, Anbindung eines echten Verkehrs-Service |
 | [TravelPlanner-Daten](backend/reference_data/data/travelplanner/README.md) | Herkunft, Version, Lizenz und Format der Referenzdaten |

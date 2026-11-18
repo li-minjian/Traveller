@@ -69,6 +69,7 @@ Startreihenfolge: Das Backend startet erst, wenn die Datenbank und der Journey P
 | `frontend/src/features/chat/` | Bausteine der Chat-Seite: Reiseformular (`TripForm.tsx`), Ergebniskarten mit Hin- und Rückflug (`Results.tsx`), Entwurf des Formulars und Abgleich mit dem Reise-State (`tripDraft.ts`), Formatierung (`format.ts`) |
 | `frontend/src/app/`, `frontend/src/components/` | Routing, Layout und gemeinsame Bausteine |
 | `frontend/tests/` | Unit-Tests (Vitest) |
+| `journey-planner/domain_services/` | DS1-Vertrag zu den Transportservices (DS1 #21): Python-Paket `domain_services` und `openapi.yaml`, generischer Aufrufer, Mock-Services für Flug, Bahn und Taxi, Tests in `journey-planner/tests/`. Siehe [DS1_CONTRACT.md](../journey-planner/docs/DS1_CONTRACT.md). Der Planner nutzt ihn noch nicht. |
 | `docs/` | Projekt- und Entwicklerdokumentation |
 | `docs/contracts/search-v1/` | Beispiele für den Suchauftrag und seine Antworten, für nur den Hinflug und für Hin- und Rückflug; die Tests von Backend und Journey Planner laden genau diese Dateien |
 | `compose.yaml` | lokale Entwicklungsumgebung mit `frontend`, `backend`, `journey-planner` und `db` |
@@ -145,7 +146,7 @@ Die Architektur beschreibt [ARCHITECTURE_PROTOTYPE.md](ARCHITECTURE_PROTOTYPE.md
 ## Geplant
 
 Noch nicht vorhanden:
-- **Flight Service** als eigener Service mit Mock-Adapter (DS6 #41) und der Vertrag DS1 (#21) zwischen Planner und Verkehrs-Services. Zuständig ist die Seite der Domain-Services. Die Anbindung an den Planner beschreibt die [README des Planners](../journey-planner/README.md#einen-echten-verkehrs-service-anbinden) (JP02 #39).
+- **Flight Service** als eigener Service (DS6 #41) und die Anbindung des Planners an den DS1-Vertrag (#21, liegt in `journey-planner/domain_services/`). Zuständig für die Services ist die Seite der Domain-Services. Die Anbindung an den Planner beschreibt die [README des Planners](../journey-planner/README.md#einen-echten-verkehrs-service-anbinden) (JP02 #39).
 - **Echte Anbieter-APIs** hinter den Verkehrs-Services
 - **Weitere Verkehrsmittel** wie Bahn, Bus, Auto und Fähre
 - **Hotels**

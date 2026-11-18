@@ -1,0 +1,73 @@
+{
+  "contract_version": "1.0",
+  "service_id": "flight",
+  "status": "partial",
+  "journeys": [
+    {
+      "id": "mock-airline-ma100-2026-12-15",
+      "provider_id": "mock-airline",
+      "legs": [
+        {
+          "mode": "flight",
+          "origin": {
+            "location_id": "berlin",
+            "name": "Berlin Brandenburg Airport",
+            "code": "BER",
+            "coordinates": null
+          },
+          "destination": {
+            "location_id": "munich",
+            "name": "Munich Airport",
+            "code": "MUC",
+            "coordinates": null
+          },
+          "departure_at": "2026-12-15T07:05:00+01:00",
+          "arrival_at": "2026-12-15T08:15:00+01:00",
+          "operator": "Mock Air",
+          "service_number": "MA 100",
+          "is_on_demand": false
+        }
+      ],
+      "offers": [
+        {
+          "id": "mock-airline-ma100-2026-12-15-0",
+          "provider_id": "mock-airline",
+          "price": {
+            "amount": 155.75,
+            "currency": "EUR",
+            "basis": "trip_total"
+          },
+          "price_upper": null,
+          "availability": "available",
+          "is_price_estimate": false,
+          "fare_name": "Economy Light",
+          "booking_url": null
+        },
+        {
+          "id": "mock-airline-ma100-2026-12-15-1",
+          "provider_id": "mock-airline",
+          "price": {
+            "amount": 225.75,
+            "currency": "EUR",
+            "basis": "trip_total"
+          },
+          "price_upper": null,
+          "availability": "available",
+          "is_price_estimate": false,
+          "fare_name": "Economy Classic",
+          "booking_url": null
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": "provider_unavailable",
+      "message": "Mock provider is switched off.",
+      "provider_id": "mock-charter",
+      "field": null,
+      "is_retryable": true
+    }
+  ],
+  "retrieved_at": "2026-11-16T09:30:00Z"
+}

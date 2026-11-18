@@ -1,0 +1,281 @@
+openapi: 3.1.0
+info:
+  title: Transport Service Search API (DS1)
+  version: "1.0"
+  description: |
+    Shared interface between the Journey Planner and every transport domain
+    service (flight, train, taxi/ride-hailing, later bus, ferry). Every transport service offers
+    exactly this endpoint; the Journey Planner calls all of them the same way.
+
+    The Python form of the same contract is `domain_services/contract.py`.
+    Background and rules: `docs/DS1_CONTRACT.md`.
+
+    HTTP status codes:
+    * `200`: the service handled the search. The body says what happened in
+      `status` (success, no_results, partial, unavailable). An outage of a
+      provider behind the service is a normal `200` answer with
+      `status: unavailable` or `partial`.
+    * `400`: the request is invalid (API conventions error format).
+    * `5xx` or no answer: the service itself is down. The caller treats this
+      as `unavailable`.
+paths:
+  /api/v1/journey-searches/:
+    post:
+      operationId: searchJourneys
+      summary: Search journeys for one origin/destination/time window.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JourneySearchRequest" }
+            examples:
+              berlin_munich: { externalValue: examples/request.json }
+              taxi_within_berlin: { externalValue: examples/request-taxi.json }
+      responses:
+        "200":
+          description: Search handled; see `status`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JourneySearchResult" }
+              examples:
+                success: { externalValue: examples/result-success.json }
+                success_multi_leg: { externalValue: examples/result-success-multi-leg.json }
+                success_taxi: { externalValue: examples/result-success-taxi.json }
+                no_results: { externalValue: examples/result-no-results.json }
+                partial: { externalValue: examples/result-partial.json }
+                unavailable: { externalValue: examples/result-unavailable.json }
+        "400":
+          description: Invalid request (`validation_error` with `fields`, or `parse_error`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                validation_error: { externalValue: examples/error-validation-400.json }
+        "415":
+          description: Body is not JSON.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Unexpected error in the service itself.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "503":
+          description: The service itself is temporarily unavailable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+components:
+  schemas:
+    Slug:
+      type: string
+      pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      examples: [berlin, frankfurt-am-main, mock-airline]
+
+    LocalDateTime:
+      description: ISO 8601 date-time with the UTC offset of the place, e.g. 2026-12-15T08:00:00+01:00.
+      type: string
+      format: date-time
+
+    JourneySearchRequest:
+      type: object
+      required: [origin_id, destination_id, departure_after]
+      properties:
+        origin_id:
+          $ref: "#/components/schemas/Slug"
+          description: Shared location ID (city level).
+        destination_id:
+          $ref: "#/components/schemas/Slug"
+          description: Shared location ID; must differ from origin_id unless both coordinates are given.
+        origin_coordinates:
+          description: Exact start point (hotel, address), optional. Used by door-to-door services (taxi); others may ignore it.
+          oneOf:
+            - $ref: "#/components/schemas/Coordinates"
+            - type: "null"
+        destination_coordinates:
+          description: Exact end point, optional. With both coordinates, origin_id may equal destination_id (ride within a city).
+          oneOf:
+            - $ref: "#/components/schemas/Coordinates"
+            - type: "null"
+        departure_after:
+          $ref: "#/components/schemas/LocalDateTime"
+          description: Earliest departure (inclusive), local time with offset. Offset is required.
+        departure_before:
+          description: Latest departure (inclusive), later than departure_after. null/missing = service decides, at least until the end of that local day.
+          oneOf:
+            - $ref: "#/components/schemas/LocalDateTime"
+            - type: "null"
+        passengers:
+          description: One entry per traveller. Missing = one traveller of unknown age.
+          type: array
+          minItems: 1
+          maxItems: 9
+          items: { $ref: "#/components/schemas/Passenger" }
+
+    Passenger:
+      type: object
+      properties:
+        age:
+          description: Age in years on the travel date; null/missing = not given (treated like an adult).
+          type: [integer, "null"]
+          minimum: 0
+          maximum: 120
+
+    Coordinates:
+      description: WGS 84.
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+
+    JourneySearchResult:
+      type: object
+      required: [contract_version, service_id, status, journeys, errors, retrieved_at]
+      properties:
+        contract_version: { type: string, examples: ["1.0"] }
+        service_id:
+          $ref: "#/components/schemas/Slug"
+          description: Which transport service answered, e.g. flight, train.
+        status:
+          type: string
+          enum: [success, no_results, partial, unavailable, invalid_request]
+          description: |
+            success: all providers answered, >= 1 journey, no errors.
+            no_results: all providers answered, no journey. The ONLY status meaning "no connection".
+            partial: >= 1 provider failed, others answered; journeys may be empty; errors >= 1.
+            unavailable: no provider answered; no journeys; errors >= 1.
+            invalid_request: request rejected; only validation_error entries (over HTTP sent as 400).
+        journeys:
+          type: array
+          items: { $ref: "#/components/schemas/Journey" }
+        errors:
+          type: array
+          items: { $ref: "#/components/schemas/ServiceError" }
+        retrieved_at:
+          description: When the data was fetched (UTC, with Z).
+          type: string
+          format: date-time
+
+    Journey:
+      type: object
+      required: [id, provider_id, legs, offers]
+      properties:
+        id: { type: string, minLength: 1, description: Unique within the result. }
+        provider_id: { $ref: "#/components/schemas/Slug" }
+        legs:
+          type: array
+          minItems: 1
+          description: In travel order; each leg departs no earlier than the previous one arrives.
+          items: { $ref: "#/components/schemas/Leg" }
+        offers:
+          description: null = no price information from this source; [] = known to have no offers.
+          oneOf:
+            - type: array
+              items: { $ref: "#/components/schemas/Offer" }
+            - type: "null"
+
+    Leg:
+      type: object
+      required: [mode, origin, destination, departure_at, arrival_at, operator, service_number, is_on_demand]
+      properties:
+        mode:
+          type: string
+          enum: [flight, train, bus, ferry, taxi]
+          description: taxi covers taxis and ride-hailing (Uber, Bolt, ...); operator names the company.
+        origin: { $ref: "#/components/schemas/Stop" }
+        destination: { $ref: "#/components/schemas/Stop" }
+        departure_at: { $ref: "#/components/schemas/LocalDateTime" }
+        arrival_at: { $ref: "#/components/schemas/LocalDateTime" }
+        operator: { type: [string, "null"], examples: [Mock Air] }
+        service_number: { type: [string, "null"], examples: [MA 100, ICE 501] }
+        is_on_demand:
+          type: boolean
+          description: true = no timetable, vehicle comes when booked (taxi). departure_at is the earliest pickup, arrival_at an estimate.
+
+    Stop:
+      type: object
+      required: [location_id, name, code, coordinates]
+      properties:
+        location_id: { $ref: "#/components/schemas/Slug" }
+        name: { type: [string, "null"], examples: [Berlin Brandenburg Airport] }
+        code: { type: [string, "null"], description: Public code such as an IATA code., examples: [BER] }
+        coordinates:
+          description: Exact point if known (always set for taxi pickups and drop-offs).
+          oneOf:
+            - $ref: "#/components/schemas/Coordinates"
+            - type: "null"
+
+    Offer:
+      type: object
+      required: [id, provider_id, price, price_upper, availability, is_price_estimate, fare_name, booking_url]
+      properties:
+        id: { type: string, minLength: 1 }
+        provider_id: { $ref: "#/components/schemas/Slug" }
+        price:
+          description: null = price unknown (never 0).
+          oneOf:
+            - $ref: "#/components/schemas/Money"
+            - type: "null"
+        price_upper:
+          description: Upper bound if the provider gives a price range (e.g. ride-hailing estimates); price is then the lower bound. null = price is a single value.
+          oneOf:
+            - $ref: "#/components/schemas/Money"
+            - type: "null"
+        availability: { type: string, enum: [available, sold_out, unknown] }
+        is_price_estimate:
+          type: boolean
+          description: true = price from timetable/fare tables, not a live bookable quote.
+        fare_name: { type: [string, "null"] }
+        booking_url: { type: [string, "null"] }
+
+    Money:
+      description: See docs/API_CONVENTIONS.md section 7.
+      type: object
+      required: [amount, currency, basis]
+      properties:
+        amount: { type: number, minimum: 0, description: At most two decimal places. }
+        currency: { type: string, pattern: "^[A-Z]{3}$" }
+        basis: { type: string, enum: [trip_total, per_person] }
+
+    ServiceError:
+      type: object
+      required: [code, message, provider_id, field, is_retryable]
+      properties:
+        code:
+          type: string
+          enum:
+            - validation_error
+            - timeout
+            - rate_limited
+            - provider_unavailable
+            - authentication_failed
+            - invalid_provider_response
+            - internal_error
+        message: { type: string, description: English, for developers; may change. }
+        provider_id:
+          description: Provider that failed; null if not provider-specific.
+          oneOf:
+            - $ref: "#/components/schemas/Slug"
+            - type: "null"
+        field: { type: [string, "null"], description: Request field, only for validation_error. }
+        is_retryable: { type: boolean }
+
+    ErrorResponse:
+      description: Error format of docs/API_CONVENTIONS.md section 4.
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            fields:
+              type: object
+              additionalProperties:
+                type: array
+                items: { type: string }
