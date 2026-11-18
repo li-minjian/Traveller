@@ -28,3 +28,14 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      - name: Verify standard production excludes the mock worker
+        run: test ! -e dist/mockServiceWorker.js
+      - name: Verify opt-in demo build
+        run: |
+          npm run build:demo
+          test -s dist/mockServiceWorker.js
+          test -f dist/index.html
+      - name: Verify Vercel environment flag also builds the demo
+        run: |
+          VITE_DEMO_MODE=true npm run build
+          test -s dist/mockServiceWorker.js
