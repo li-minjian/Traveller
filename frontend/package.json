@@ -13,7 +13,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "dev:mock": "vite --mode mock --port 5174 --strictPort"
+    "dev:mock": "vite --mode mock --port 5174 --strictPort",
+    "build:demo": "vite build --mode demo"
   },
   "dependencies": {
     "@fontsource-variable/eb-garamond": "^5.3.0",
