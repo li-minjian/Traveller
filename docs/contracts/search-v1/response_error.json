@@ -1,0 +1,9 @@
+{
+  "status": "error",
+  "journeys": [],
+  "no_results": null,
+  "error": {
+    "code": "provider_unavailable",
+    "message": "A transport service could not be reached."
+  }
+}

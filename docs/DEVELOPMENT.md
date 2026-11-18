@@ -6,7 +6,7 @@ Wie man Traveller lokal einrichtet, startet, prüft und zurücksetzt. Wie das Pr
 
 - **Docker** mit dem Compose-Plugin (`docker compose`, nicht das alte `docker-compose`).
 - **Git**.
-- Freie Ports **3000** (Frontend) und **8000** (Backend) auf `localhost`.
+- Freie Ports **3000** (Frontend), **8000** (Backend) und **8001** (Journey Planner) auf `localhost`.
 - Nur für die Arbeit außerhalb von Docker: Python 3.14 (3.13 geht auch) und Node.js 24 (22.12 oder neuer geht auch).
 
 Der erste Build braucht Internet für die Images und Pakete, der laufende Betrieb nicht. Die Referenzdaten liegen im Repository.
@@ -18,17 +18,22 @@ git clone https://github.com/li-minjian/Traveller.git
 cd Traveller
 cp .env.example .env                                                  # lokale Konfiguration
 docker compose up --build -d                                          # bauen und starten
-docker compose ps                                                     # nach ~30 s: alle drei "healthy"
+docker compose ps                                                     # nach ~30 s: alle vier "healthy"
 docker compose exec backend python manage.py import_reference_cases   # Referenzdaten laden
 ```
 
-Danach zeigt [http://localhost:3000](http://localhost:3000) die Statusseite mit „Connected“ und „1,225 cases imported“. Die Migrationen laufen beim Start des Backends automatisch.
+Danach öffnet [http://localhost:3000](http://localhost:3000) den Chat unter `/chat`. Die Statusseite [http://localhost:3000/status](http://localhost:3000/status) zeigt „Connected“ und „1,225 cases imported“. Die Migrationen laufen beim Start des Backends automatisch.
 
 | Service | Adresse | Inhalt |
 | --- | --- | --- |
-| `frontend` | [http://localhost:3000](http://localhost:3000) | Vite-Dev-Server mit Statusseite `/status`, leitet `/api` an das Backend weiter |
-| `backend` | [http://localhost:8000/api/v1/health/](http://localhost:8000/api/v1/health/) | Django-Entwicklungsserver mit der REST-API |
+| `frontend` | [http://localhost:3000](http://localhost:3000) | Vite-Dev-Server mit der Chat-Seite `/chat` (Startseite, Chat und Reiseformular) und der Statusseite `/status`, leitet `/api` an das Backend weiter |
+| `backend` | [http://localhost:8000/api/v1/health/](http://localhost:8000/api/v1/health/) | Django-Entwicklungsserver mit der REST-API, dem Main-Agent und dem Optimization Agent |
+| `journey-planner` | [http://localhost:8001/health](http://localhost:8001/health) | Django-Entwicklungsserver des Journey Planners mit `POST /plan`; ohne Datenbank und ohne LLM, liefert erfundene Beispielflüge zwischen 30 europäischen Städten |
 | `db` | kein Host-Port | PostgreSQL 18, nur im Compose-Netz unter dem Namen `db` erreichbar |
+
+Das Backend startet erst, wenn `db` und `journey-planner` ihren Healthcheck bestehen. Die Pfade des Planners haben, anders als die der Backend-API, keinen Schrägstrich am Ende.
+
+**Stand der Prüfung:** Das Compose-Setup mit allen vier Services wurde am 18.11.2026 unter Windows frisch gebaut und gestartet; alle Services wurden `healthy`, und ein Gespräch im Chat lief mit dem echten LLM bis zu den Flugvarianten durch. Diese Prüfung fand vor der Erweiterung um den Rückflug statt.
 
 ## Umgebungsvariablen
 
@@ -44,29 +49,67 @@ Alle Werte stehen in der `.env` im Repo-Root. [`.env.example`](../.env.example) 
 | `POSTGRES_PASSWORD` | ja | – | Passwort des Datenbankbenutzers |
 | `POSTGRES_HOST` | nein | `localhost` | Host der Datenbank; Compose setzt für das Backend selbst `db` |
 | `POSTGRES_PORT` | nein | `5432` | Port der Datenbank; Compose setzt `5432` |
-| `WATCH_POLLING` | nein | `false` | `true`, falls Dateiänderungen den Frontend-Container nicht erreichen |
+| `LLM_PROVIDER` | nein | `offline` | `offline` (regelbasierter Ersatz, ohne Zugangsdaten und ohne Netz) oder `gemini` (echtes LLM) |
+| `LLM_API_KEY` | bei `gemini` | – | API-Schlüssel für Gemini; nur in der eigenen `.env` |
+| `LLM_MODEL` | nein | `gemini-3.6-flash` | Modellname bei `gemini`. Zur Wahl des Modells siehe [LLM-Zugang](#llm-zugang). |
+| `LLM_ENDPOINT` | nein | `https://aiplatform.googleapis.com/v1/publishers/google/models/{model}:generateContent` | Adresse des Gemini-Aufrufs mit dem Platzhalter `{model}`. Standard ist die Gemini-Plattform von Google Cloud. |
+| `LLM_TIMEOUT_SECONDS` | nein | `20` | Timeout eines LLM-Aufrufs |
+| `LLM_MAX_ATTEMPTS` | nein | `2` | Versuche pro Aufruf bei Timeout, Ausfall oder unbrauchbarer Antwort |
+| `OPTIMIZATION_AGENT_ENABLED` | nein | `true` | `false` schaltet den Optimization Agent ab: keine Prüfung der Ergebnisse, keine gelockerte Suche bei „keine Treffer“ |
+| `JOURNEY_PLANNER_URL` | nein | `http://localhost:8001` | Adresse des Journey Planners aus Sicht des Backends; Compose setzt `http://journey-planner:8001` |
+| `JOURNEY_PLANNER_TIMEOUT_SECONDS` | nein | `10` | Timeout eines Aufrufs des Journey Planners |
+| `FLIGHT_PROVIDER` | nein | `dummy` | Woher der Journey Planner Flüge bekommt. Bisher gibt es nur `dummy` (erfundene Beispielflüge). |
+| `WATCH_POLLING` | nein | `false` | `true`, falls Dateiänderungen den Frontend-Container nicht erreichen. Unter Windows mit Docker ist das nötig, siehe [Häufige Fehler](#häufige-fehler). |
 | `API_PROXY_TARGET` | nein | `http://localhost:8000` | Ziel des Vite-Proxys für `/api`; Compose setzt `http://backend:8000` |
 
 Die Postgres-Variablen liest auch das offizielle `postgres`-Image, deshalb teilen sich Datenbank und Backend dieselbe `.env`.
 
+`FLIGHT_PROVIDER` liest nur der Journey Planner. Er bekommt nicht die ganze `.env`, sondern nur die Variablen, die `compose.yaml` bei `journey-planner` unter `environment` nennt: `FLIGHT_PROVIDER` und `DJANGO_DEBUG`. Alle anderen Variablen der Tabelle außer `WATCH_POLLING` und `API_PROXY_TARGET` liest das Backend.
+
 - **Fehlt eine Pflichtvariable** oder ist sie leer, bricht Django beim Start ab, zum Beispiel mit `Environment variable DJANGO_SECRET_KEY is not set.`
 - **Ist eine optionale Variable leer**, gilt ihr Standardwert.
+- **Ein unbekannter Wert** für `LLM_PROVIDER` oder `FLIGHT_PROVIDER` fällt erst beim ersten Aufruf auf, nicht beim Start, ebenso `LLM_PROVIDER=gemini` ohne `LLM_API_KEY`. Der Chat-Endpunkt antwortet dann mit `500`, beim Planner meldet der Chat einen Ausfall der Flugsuche. Die Ursache steht im Log des jeweiligen Service.
 - **Neue Variablen** kommen mit unkritischem Beispielwert in `.env.example` und in diese Tabelle.
+
+### LLM-Zugang
+
+Ohne weitere Einstellung arbeitet das Backend mit `LLM_PROVIDER=offline`. Das ist kein LLM, sondern ein regelbasierter Ersatz in [`backend/llm/offline.py`](../backend/llm/offline.py): Er erkennt einige feste Muster in deutschen und englischen Sätzen, etwa „von Berlin nach Lissabon“, Datumsangaben wie „20. Mai“ oder „20.05.2027“, „2 Personen“, „300 € pro Person“ und „direkt“. Ein Datum nach „zurück“, „Rückflug“, „Rückreise“, „bis“, „return“ oder „back“ liest er als Rückflug, ebenso eine bloße Datumsangabe als Antwort auf die Frage nach dem Rückflug. „Nur Hinflug“, „ohne Rückflug“ oder „one way“ liest er als Reise ohne Rückflug. Eine Nachricht, die nur aus einer Zustimmung besteht („ja“, „passt“, „genau“, „ok“), liest er als Bestätigung. Als Antwort gibt er den deutschen Text aus, den der Agent ohne LLM sagen würde (`backend/agent/texts.py`); der Agent reicht ihn bei jedem Aufruf als `fallback` mit. Damit läuft der Chat ohne Zugangsdaten und ohne Netz. Freie Formulierungen versteht der Ersatz nicht, er rät keine Werte, erkennt keine Rücknahme wie „Budget ist mir egal“ und antwortet immer deutsch. Er stuft jede Nachricht als Reisedaten ein; deshalb sucht der Agent mit ihm nach jeder Nachricht erneut, sobald alle Pflichtangaben da sind.
+
+Für das echte LLM in der eigenen `.env` `LLM_PROVIDER=gemini` und `LLM_API_KEY=…` setzen, danach `docker compose up -d`. Der Schlüssel gehört nie ins Repository. Mit Gemini liest das LLM jede Nachricht und schreibt die Antworten selbst, in der Sprache der Nachricht. Die Liste der Verbindungen hängt weiterhin der Code an.
+
+**Modell:** Standard ist `gemini-3.6-flash`. Das kleinere `gemini-3.5-flash-lite` hat in echten Testgesprächen Eingaben wie „um Ostern rum“ oder „ja passt“ übergangen. Strukturierte Ausgaben fordert der Client mit `temperature: 0` an, damit dieselbe Nachricht möglichst gleich gelesen wird.
+
+**Stand der Prüfung:** Am 16.11.2026 liefen acht festgelegte Testgespräche mit `gemini-3.6-flash` über einen Schlüssel der Gemini-Plattform, und das Modell hat alle acht bewältigt. Zusammen waren das 67 LLM-Aufrufe mit rund 76.000 Eingabe- und 4.000 Ausgabe-Tokens. Das war vor der Erweiterung um den Rückflug.
+
+Am 18.11.2026 liefen mit `gemini-3.6-flash` acht festgelegte Gespräche, die auf Korrekturen zielen: ein Ort erst als Start und dann als Ziel, Start und Ziel getauscht, Rückflug vor dem Hinflug, Grenzen zurückgenommen, Hinflug hinter den Rückflug verschoben, Aufenthaltsdauer statt Rückflugdatum, eine vage Änderung über einem festen Wert. In keinem Schritt ging ein Wert verloren, den das LLM geliefert hat: Jeder stand danach im Reise-State oder war mit einem Grund abgelehnt, den der Agent genannt hat.
+
+Die Gespräche sind nicht Teil der automatischen Tests; diese brauchen kein echtes LLM.
+
+So entsteht der Zugang über das Guthaben in Google Cloud (AG01 #30):
+
+1. In der Google-Cloud-Konsole ein eigenes Projekt anlegen und unter „Abrechnung“ mit dem Rechnungskonto verknüpfen, auf dem das Guthaben liegt.
+2. Unter „Agent Platform“ → „API-Schlüssel abrufen“ zuerst „APIs aktivieren“, dann „Create API Key“. Google legt dabei ein Dienstkonto `vertex-express@<projekt>.iam.gserviceaccount.com` an.
+3. Unter „IAM & Verwaltung“ → „IAM“ → „Zugriffsrechte erteilen“ diesem Dienstkonto die Rolle „Agent Platform User“ geben. Ohne sie antwortet Google mit `403 Permission 'aiplatform.endpoints.predict' denied`.
+4. Den Schlüssel in der eigenen `.env` als `LLM_API_KEY` eintragen.
+
+Ein Schlüssel der Gemini API aus AI Studio braucht eine andere Adresse: `LLM_ENDPOINT=https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`. Diese Variante ist nicht geprüft.
+
+Das Fake-LLM mit festgelegten Antworten (`backend/llm/fake.py`) ist nur für Tests gedacht und lässt sich nicht über `LLM_PROVIDER` wählen.
 
 ## Starten, stoppen, Logs
 
 | Aufgabe | Befehl |
 | --- | --- |
 | alles starten | `docker compose up -d` |
-| nach Änderung an `backend/requirements.txt` oder einem Dockerfile | `docker compose up --build -d` |
+| nach Änderung an einer `requirements.txt` (`backend/`, `journey-planner/`) oder einem Dockerfile | `docker compose up --build -d` |
 | Status ansehen | `docker compose ps` |
-| Logs verfolgen | `docker compose logs -f backend`, ebenso für `frontend` und `db` |
+| Logs verfolgen | `docker compose logs -f backend`, ebenso für `frontend`, `journey-planner` und `db` |
 | einen Service neu starten | `docker compose restart backend` |
 | Django-Befehl ausführen | `docker compose exec backend python manage.py <befehl>` |
 | Datenbank-Konsole | `docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'` |
 | stoppen, Daten behalten | `docker compose stop` oder `docker compose down` |
 
-Code in `frontend/` und `backend/` ist in die Container eingebunden. Änderungen greifen sofort und ohne Rebuild: Django startet neu, Vite lädt den Browser neu. Ändert sich `frontend/package-lock.json`, installiert der Frontend-Container beim nächsten Start (`docker compose restart frontend`) die Abhängigkeiten automatisch neu.
+Code in `frontend/`, `backend/` und `journey-planner/` ist in die Container eingebunden. Änderungen greifen sofort und ohne Rebuild: Django startet neu, Vite lädt den Browser neu. Die Vertragsbeispiele in `docs/contracts/` sind in Backend und Planner nur lesend unter `/docs/contracts` eingebunden, weil die Tests beider Services sie laden. Ändert sich `frontend/package-lock.json`, installiert der Frontend-Container beim nächsten Start (`docker compose restart frontend`) die Abhängigkeiten automatisch neu.
 
 ### Stoppen oder Daten löschen
 
@@ -76,7 +119,7 @@ Code in `frontend/` und `backend/` ist in die Container eingebunden. Änderungen
 | `docker compose down` | entfernt | **bleiben** (Volume `postgres-data`) |
 | `docker compose down -v` | entfernt | **gelöscht**, ebenso das Volume `frontend-node-modules` |
 
-`down -v` löscht alle Planungssitzungen und importierten Referenzdaten unwiderruflich. Danach startet das Backend mit einer leeren Datenbank. Die Migrationen laufen beim Start automatisch, die Referenzdaten müssen neu importiert werden.
+`down -v` löscht alle Planungssitzungen mit ihren Nachrichten und die importierten Referenzdaten unwiderruflich. Danach startet das Backend mit einer leeren Datenbank. Die Migrationen laufen beim Start automatisch, die Referenzdaten müssen neu importiert werden.
 
 ## Migrationen
 
@@ -114,6 +157,7 @@ Imported 1225 cases (1225 new, 0 updated, 0 unchanged), rejected 0.
 | --- | --- |
 | Backend-Tests | `docker compose exec backend python manage.py test` |
 | einzelne App oder Klasse | `docker compose exec backend python manage.py test reference_data` |
+| Tests des Journey Planners | `docker compose exec journey-planner python manage.py test` |
 | Frontend-Typprüfung | `docker compose exec frontend npm run typecheck` |
 | Frontend-Lint | `docker compose exec frontend npm run lint` |
 | Frontend-Unit-Tests | `docker compose exec frontend npm test` |
@@ -121,16 +165,23 @@ Imported 1225 cases (1225 new, 0 updated, 0 unchanged), rejected 0.
 
 Die Frontend-Befehle laufen im Container, Node.js wird auf dem eigenen Rechner nicht gebraucht. Wer Node installiert hat, kann sie auch nach `npm ci` in `frontend/` direkt ausführen.
 
-**Backend-Tests**, derzeit 39 in etwa 1,5 s:
+**Backend-Tests:**
 
 - **Eigene Testdatenbank:** Sie laufen gegen eine eigene Datenbank `test_traveller` auf demselben PostgreSQL-Server. Django legt sie vorher an und löscht sie danach, die Entwicklungsdaten bleiben unverändert.
-- **Keine externen Dienste:** Die Tests brauchen weder Internet noch Reiseanbieter noch einen LLM-Zugang. Für den Import erzeugen sie eigene kleine Testdateien.
+- **Keine externen Dienste:** Die Tests brauchen weder Internet noch Reiseanbieter noch einen LLM-Zugang und auch keinen laufenden Journey Planner. Das LLM ist das Fake-LLM oder der Offline-Ersatz, der Planner ein Stub, der mit den Vertragsbeispielen aus `docs/contracts/search-v1/` antwortet. Für den Import erzeugen die Tests eigene kleine Testdateien.
 - **Abgedeckt:**
   - Health, Fehlerformat und Umgebungsvariablen in `backend/config/tests.py`
   - Session-API in `backend/planning/tests.py`
+  - Reise-State in `backend/planning/test_trip_state.py`, darunter Rückflug und Reiseart, nachsichtig gelesene Werte, „die letzte Aussage gewinnt“ und das Bestätigen geratener Werte
+  - LLM-Client, Gemini-Client gegen nachgestellte Antworten, Fake-LLM und Offline-Ersatz in `backend/llm/tests.py`
+  - Main-Agent (Angaben herauslesen, nächste Frage, Bestätigung geratener Werte, Korrekturen und zurückgenommene Angaben, Hin- und Rückflug, keine neue Suche ohne Änderung, Suche und Erklärung), Optimization Agent, Planner-Client und Chat-Endpunkt in `backend/agent/tests.py`
   - Import und Referenz-API in `backend/reference_data/tests/`
 
-**Frontend-Unit-Tests** prüfen den zentralen API-Client in `frontend/tests/api.test.ts`. Browser- und End-to-End-Tests gibt es im Grundgerüst nicht.
+**Tests des Journey Planners**, derzeit 41, in `journey-planner/planner/tests.py`: Endpunkte `POST /plan` und `GET /health`, Validierung des Suchauftrags, Filter und Rangfolge, Hin- und Rückflug als Paar, „keine Treffer“ mit Grund und Richtung, der Ausfall eines Providers sowie die Beispielflüge des Dummy-Providers. Sie brauchen keine Datenbank und vergleichen die Antworten mit denselben Vertragsbeispielen wie die Backend-Tests.
+
+**Frontend-Unit-Tests** prüfen den zentralen API-Client in `frontend/tests/api.test.ts`, darunter `sendMessage`, `listMessages` und `getTripState`, und den Entwurf des Reiseformulars in `frontend/tests/tripDraft.test.ts`. Die Komponenten der Chat-Seite haben keine Tests. Browser- und End-to-End-Tests gibt es nicht.
+
+**Stand der Prüfung:** Am 18.11.2026 liefen alle drei Testsuiten im Compose-Setup unter Windows, die Backend-Tests gegen PostgreSQL, alle grün. Das war vor der Erweiterung um den Rückflug. Danach liefen die 41 Tests des Journey Planners lokal ohne Docker, alle grün. Für Backend und Frontend gilt der jeweils letzte eigene Testlauf; eine Zahl steht hier bewusst nicht.
 
 ## Ohne Docker arbeiten
 
@@ -147,6 +198,17 @@ python manage.py runserver
 
 Django liest die `.env` im Repo-Root dabei selbst. `docker stop` und `docker start traveller-db` behalten die Daten, erst `docker rm -v traveller-db` löscht sie.
 
+Für die Suche im Chat braucht das Backend den Journey Planner. Entweder läuft er weiter in Compose (Port 8001 ist an `localhost` gebunden), oder er startet in einem zweiten Terminal direkt. Er braucht keine Datenbank und keine `.env`:
+
+```sh
+cd journey-planner
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+python manage.py runserver 8001
+```
+
+Das Backend erreicht ihn über den Standardwert `JOURNEY_PLANNER_URL=http://localhost:8001`. Läuft kein Planner, funktioniert der Chat bis zur Suche und meldet dann, dass die Flugsuche nicht erreichbar ist.
+
 Das Frontend lässt sich ebenso direkt starten: in `frontend/` erst `npm ci`, dann `npm run dev`. Es leitet `/api` an `http://localhost:8000` weiter.
 
 ## Häufige Fehler
@@ -154,13 +216,20 @@ Das Frontend lässt sich ebenso direkt starten: in `frontend/` erst `npm ci`, da
 | Symptom | Ursache | Lösung |
 | --- | --- | --- |
 | `required variable POSTGRES_DB is missing a value: missing - run cp .env.example .env` | Die `.env` fehlt | `cp .env.example .env` |
-| `Bind for 127.0.0.1:3000 failed: port is already allocated` (oder `:8000`) | Ein anderes Programm belegt den Port, oft ein lokaler `npm run dev` oder `runserver` | Programm beenden oder in `compose.yaml` den linken Port ändern, z. B. `127.0.0.1:3001:3000` |
+| `Bind for 127.0.0.1:3000 failed: port is already allocated` (oder `:8000`, `:8001`) | Ein anderes Programm belegt den Port, oft ein lokaler `npm run dev` oder `runserver` | Programm beenden oder in `compose.yaml` den linken Port ändern, z. B. `127.0.0.1:3001:3000` |
+| Chat: „Die Flugsuche ist gerade nicht erreichbar.“ | Der Journey Planner läuft nicht, antwortet nicht rechtzeitig oder lehnt den Suchauftrag ab | `docker compose ps`, dann `docker compose logs journey-planner` und `docker compose logs backend` |
+| Chat: „The language model or planner is temporarily unavailable.“ | Das Backend antwortet mit `503`: LLM nicht erreichbar, Quota erschöpft oder Datenbank gestoppt | `docker compose logs backend`; bei `LLM_PROVIDER=gemini` Schlüssel und Modell prüfen oder auf `offline` zurückstellen |
+| Der Chat versteht eine Angabe nicht und fragt erneut | Mit `LLM_PROVIDER=offline` erkennt nur ein regelbasierter Ersatz feste Muster | Angabe einfacher formulieren, z. B. „von Berlin nach Lissabon am 20.05.2027 mit 2 Personen, zurück am 27.05.2027“, oder das echte LLM einstellen, siehe [LLM-Zugang](#llm-zugang) |
+| Chat antwortet ohne neue Ergebnisse, mit dem echten LLM | Die Nachricht hat den Reise-State nicht geändert und enthält keine Reisedaten, deshalb sucht der Agent nicht noch einmal | Eine Angabe ändern, z. B. Datum, Budget oder Umstiege, im Chat oder im Formular |
+| Chat fragt „Wann möchtest du zurückfliegen?“, obwohl nur der Hinflug gebraucht wird | Ohne andere Angabe plant der Agent Hin- und Rückflug | „nur Hinflug“ schreiben oder im Formular „One-way“ wählen |
+| Chat: „… habe ich leider nichts gefunden. An diesen Tagen gibt es keine Verbindung auf dieser Strecke.“ | Der Dummy-Provider kennt nur 30 europäische Städte, und nicht jede Strecke wird täglich bedient | Zeitraum statt eines festen Datums angeben; die Städte stehen in `PLACES` in `journey-planner/planner/providers/dummy_flights.py` |
 | Statusseite: „Backend unreachable“ | Backend-Container läuft nicht oder startet noch | `docker compose ps`, dann `docker compose logs backend`; meist hilft `docker compose up -d` |
 | Statusseite: „Database unavailable“ | Datenbank gestoppt oder nicht bereit | `docker compose up -d`, danach „Check again“ |
 | Backend bleibt `unhealthy` oder startet immer wieder neu | Migration schlägt fehl oder die Datenbank ist dauerhaft nicht erreichbar | `docker compose logs backend` zeigt den Fehler |
 | Statusseite: „Not imported yet“ | Referenzdaten noch nicht importiert, z. B. nach `down -v` | `docker compose exec backend python manage.py import_reference_cases` |
 | API antwortet `404` für `/api/v1/health` | Schrägstrich am Ende fehlt | Pfade immer mit `/` beenden, siehe [Konventionen](API_CONVENTIONS.md#1-adressen) |
-| Codeänderungen kommen im Frontend nicht an | Das System liefert keine Datei-Events in den Container, häufig unter Windows mit dem Projekt außerhalb von WSL | `WATCH_POLLING=true` in `.env`, dann `docker compose up -d` |
+| Frontend-Container beendet sich sofort, Log: `exec /usr/local/bin/dev-entrypoint: no such file or directory` | Unter Windows hat Git das Startskript `frontend/dev-entrypoint.sh` mit Windows-Zeilenenden ausgecheckt | Die `.gitattributes` im Repo verhindert das. In einem älteren Checkout: `git rm --cached -r . && git reset --hard` (**verwirft nicht eingecheckte Änderungen**) oder die Datei im Editor auf LF umstellen, dann `docker compose up --build -d` |
+| Codeänderungen kommen im Frontend nicht an, der Browser zeigt den alten Stand | Das System liefert keine Datei-Events in den Container. Unter Windows mit dem Projekt außerhalb von WSL ist das der Normalfall: Der Vite-Dev-Server im Container bemerkt Änderungen dann nicht. | `WATCH_POLLING=true` in `.env`, dann `docker compose up -d` |
 | Nach neuen Python-Paketen: `ModuleNotFoundError` | Das Image ist veraltet | `docker compose up --build -d` |
 | Nach neuen npm-Paketen: Import-Fehler im Browser | Die Abhängigkeiten im Container sind veraltet | `docker compose restart frontend`, dabei installiert der Container automatisch neu |
 | Tests fragen „Type 'yes' if you would like to try deleting the test database“ | Ein abgebrochener Lauf hat `test_traveller` hinterlassen | `… manage.py test --noinput` |
