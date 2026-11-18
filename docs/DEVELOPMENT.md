@@ -208,8 +208,57 @@ Die Demo verwendet festgelegte Antworten und eine Flug-Fixture aus dem
 Suchvertrag. Weitere Orte, Daten, Rückflüge und freie Sprachinterpretation
 können im Real-Modus mit der Backend-API ausprobiert werden. Für den Real-Modus
 `npm run dev` starten und die angezeigte URL öffnen. Der Vite-Proxy nutzt lokal
-standardmäßig Django auf Port 8000, unter Compose den Service `backend`. Der
-Produktionsbuild startet keinen Worker und enthält keine Mock-Handler.
+standardmäßig Django auf Port 8000, unter Compose den Service `backend`. Der normale Produktionsbuild startet keinen Mock-Worker und enthält keine Mock-Handler. Nur ein ausdrücklich aktivierter Demo-Build enthält den Worker und die simulierten API-Antworten.
+
+### Öffentliche Frontend-Demo auf Vercel
+
+Die bestehende URL (z. B. `https://traveller-vs.vercel.app/chat`) kann
+eine **ausdrücklich aktivierte Demo** ohne Django-Backend ausliefern. Sie verwendet
+dieselben MSW-Handler und den vorhandenen API-Client wie der lokale Mock-Modus.
+Alle Flüge, Preise, Agentenantworten und Sitzungen in diesem Modus sind simuliert;
+das Banner `Demo mode · Simulated travel data` macht das sichtbar.
+Es gibt keine echten Buchungen oder einen echten LLM-Aufruf.
+
+Im Vercel-Projekt (Root Directory: `frontend`, Output Directory: `dist`)
+gibt es zwei Wege, die Demo bei einem neuen Deployment einzuschalten:
+
+1. **Build-Command `npm run build:demo`** verwenden. Dieses Skript führt
+   `vite build --mode demo` aus. Es benötigt keine Umgebungsvariable.
+2. Alternativ den bisherigen Build-Command `npm run build` beibehalten,
+   die Vercel-Umgebungsvariable `VITE_DEMO_MODE=true` für die gewünschte
+   Deployment-Umgebung setzen und erneut deployen. Der Schalter ist öffentlich
+   im Client sichtbar und **kein Secret**.
+
+Im opt-in Demo-Build schreibt Vite den zu der installierten MSW-Version gehörenden
+Worker nach `dist/mockServiceWorker.js` und lädt die Mock-Handler. Der Browser
+registriert ihn unter `/mockServiceWorker.js` mit Gültigkeit für `/api/v1/`.
+Der Worker muss unter dem Deployment-Host mit HTTP 200 als JavaScript erreichbar
+sein; eine SPA-Rewrite-Regel darf diesen Pfad nicht auf `index.html` umleiten.
+Für Service Worker ist HTTPS nötig; Vercel stellt HTTPS bereit.
+
+**Lokal als gebautes Bundle testen (ohne Backend):**
+
+```sh
+cd frontend
+npm ci
+npm run build:demo
+test -s dist/mockServiceWorker.js
+npm run preview -- --host 127.0.0.1 --port 4173
+```
+
+Dann `http://127.0.0.1:4173/chat` öffnen, `Berlin to Lissabon` senden
+und `yes` bestätigen. Ein Beispielflug vom **20.05.2027** erscheint.
+Weitere Szenarien: `?scenario=empty`, `?scenario=backend-error`
+und `?scenario=api-error`. Demo-Nachrichten und -Sitzungen werden nur im
+`sessionStorage` des Browser-Tabs gespeichert.
+
+**Zur echten API zurückkehren:** In Vercel `VITE_DEMO_MODE` entfernen oder
+`false` setzen (bzw. den Build-Command auf `npm run build` zurückstellen)
+und ein neues Deployment auslösen. Dann benötigt `/api/v1/` eine funktionierende
+Backend-Route bzw. einen Reverse Proxy. Ein normales `npm run build` ohne
+Demo-Schalter enthält weder Mock-Handler noch `mockServiceWorker.js`.
+Die Vercel-Project-Konfiguration und das aktuell zugewiesene Deployment
+müssen unabhängig vom Code überprüft werden.
 
 ### Frontend-CI und Komponententests
 
