@@ -11,6 +11,9 @@ export async function startMockApi() {
   const worker = setupWorker(...createMockHandlers({
     scenario, storage: sessionStorage, responseDelay: 400,
   }));
-  await worker.start();
+  await worker.start({
+    serviceWorker: { url: '/mockServiceWorker.js' },
+    onUnhandledRequest: 'bypass',
+  });
   return scenario;
 }
