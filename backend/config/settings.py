@@ -83,6 +83,24 @@ DATABASES = {
     }
 }
 
+# LLM access (package `llm`). "offline" needs no credentials and no network.
+LLM_PROVIDER = env("LLM_PROVIDER", "offline").strip().lower()
+LLM_MODEL = env("LLM_MODEL", "gemini-3.6-flash")
+LLM_API_KEY = env("LLM_API_KEY", "")
+LLM_ENDPOINT = env(
+    "LLM_ENDPOINT",
+    "https://aiplatform.googleapis.com/v1/publishers/google/models/{model}:generateContent",
+)
+LLM_TIMEOUT_SECONDS = float(env("LLM_TIMEOUT_SECONDS", "20"))
+LLM_MAX_ATTEMPTS = int(env("LLM_MAX_ATTEMPTS", "2"))
+
+# Journey Planner (own service, see docs/SEARCH_CONTRACT.md).
+JOURNEY_PLANNER_URL = env("JOURNEY_PLANNER_URL", "http://localhost:8001")
+JOURNEY_PLANNER_TIMEOUT_SECONDS = float(env("JOURNEY_PLANNER_TIMEOUT_SECONDS", "10"))
+
+# The Optimization Agent reviews results and searches again when nothing was found.
+OPTIMIZATION_AGENT_ENABLED = env_bool("OPTIMIZATION_AGENT_ENABLED", default=True)
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LANGUAGE_CODE = "en-us"

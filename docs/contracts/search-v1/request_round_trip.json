@@ -1,0 +1,22 @@
+{
+  "origin": "Berlin",
+  "destination": "Lissabon",
+  "departure": {
+    "earliest": "2027-05-20",
+    "latest": "2027-05-20"
+  },
+  "return": {
+    "earliest": "2027-05-27",
+    "latest": "2027-05-27"
+  },
+  "travelers": 2,
+  "max_price": {
+    "amount": 400,
+    "currency": "EUR",
+    "basis": "per_person"
+  },
+  "max_stops": null,
+  "modes": [
+    "flight"
+  ]
+}

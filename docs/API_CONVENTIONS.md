@@ -8,7 +8,7 @@ Mit **„noch nicht verwendet“** markierte Regeln gelten für künftige Endpun
 
 - Alle Pfade beginnen mit `/api/v1/`. Inkompatible Änderungen bekommen eine neue Version `/api/v2/`, etwa wenn ein Feld entfernt oder umbenannt wird oder sich seine Bedeutung ändert. Neue optionale Felder sind kompatibel und brauchen keine neue Version.
 - Ressourcen stehen im **Plural**, in Kleinbuchstaben und mit Bindestrich: `/api/v1/planning-sessions/`, `/api/v1/reference-cases/`.
-- Eine einzelne Ressource liegt unter `/<ressource>/{id}/`, Unterressourcen darunter, etwa `/api/v1/planning-sessions/{id}/messages/` (geplant, AG08 #37).
+- Eine einzelne Ressource liegt unter `/<ressource>/{id}/`, Unterressourcen darunter, etwa `/api/v1/planning-sessions/{id}/messages/`.
 - **Jeder Pfad endet mit `/`.** Ohne Schrägstrich antwortet die API mit `404`. Es gibt bewusst keine Weiterleitung, weil dabei die Daten eines POST verloren gingen.
 - Filter und Seiten sind Query-Parameter in `snake_case`: `/api/v1/reference-cases/?split=train&page=2`.
 
@@ -36,7 +36,7 @@ Mit **„noch nicht verwendet“** markierte Regeln gelten für künftige Endpun
 | `409` | Zustandskonflikt: Die Anfrage ist gültig, passt aber nicht zum aktuellen Zustand (noch nicht verwendet) | `conflict` | Suche starten, obwohl Pflichtangaben fehlen |
 | `415` | Anfrage nicht als JSON | `unsupported_media_type` | `Content-Type: text/plain` |
 | `500` | unerwarteter Fehler | `internal_error` | Programmfehler |
-| `503` | vorübergehend nicht verfügbar | `service_unavailable` | Datenbank gestoppt, später auch LLM oder Anbieter |
+| `503` | vorübergehend nicht verfügbar | `service_unavailable` | Datenbank gestoppt, LLM antwortet nicht |
 
 Im Code wirft ein View dafür Exceptions und baut keine eigenen Fehlerantworten:
 
@@ -82,7 +82,7 @@ Vorhandene Codes: `validation_error`, `parse_error`, `unsupported_media_type`, `
 - **Zeitpunkte** folgen ISO 8601 mit Zeitzone. Antworten verwenden UTC mit `Z`: `"2026-11-10T12:12:15.800785Z"`.
 - **Eingaben** sollen eine Zeitzone enthalten (`Z` oder `+01:00`). Ohne Angabe behandelt das Backend den Wert als UTC.
 - **Kalenderdaten** ohne Uhrzeit haben das Format `YYYY-MM-DD`, z. B. Reisedaten wie `"2022-03-16"`.
-- **Ortszeiten** wie Abfahrt oder Ankunft kommen mit dem Offset des Ortes: `"2026-12-15T08:00:00+01:00"` (noch nicht verwendet, vgl. DS1 #21).
+- **Ortszeiten** wie Abfahrt oder Ankunft kommen mit dem Offset des Ortes: `"2027-05-20T06:40:00+02:00"`. So stehen sie in den Reiseabschnitten der Suchergebnisse, siehe [SEARCH_CONTRACT.md](SEARCH_CONTRACT.md) (vgl. DS1 #21).
 - **Dauern** tragen ihre Einheit im Feldnamen: `days`, `duration_minutes`.
 
 ## 7. Geldbeträge
@@ -97,7 +97,7 @@ Ein Geldbetrag ist immer ein Objekt mit Betrag, Währung und Preisbasis:
 | --- | --- |
 | `amount` | JSON-Zahl in der Hauptwährungseinheit mit höchstens zwei Nachkommastellen, z. B. `251.5` für 251,50. Im Backend als `Decimal` mit `coerce_to_string=False` ausgeben. |
 | `currency` | Währungscode nach ISO 4217, immer angegeben, auch bei EUR. |
-| `basis` | Wofür der Betrag gilt: `trip_total` (ganze Reise, alle Reisenden), `per_person` (pro Person, noch nicht verwendet), `per_night` (pro Nacht, noch nicht verwendet). Eine neue Basis wird hier ergänzt. |
+| `basis` | Wofür der Betrag gilt: `trip_total` (ganze Reise, alle Reisenden), `per_person` (pro Person), `per_night` (pro Nacht, noch nicht verwendet). Eine neue Basis wird hier ergänzt. |
 
 Ist ein Preis unbekannt, ist das **ganze Objekt `null`**, nie `amount: 0`. Währungen rechnet das Backend bisher nicht um.
 

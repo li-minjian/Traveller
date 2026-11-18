@@ -1,4 +1,4 @@
-# Local development environment: frontend, backend and PostgreSQL.
+# Local development environment: frontend, backend, journey planner and PostgreSQL.
 #
 #   cp .env.example .env
 #   docker compose up --build -d
@@ -40,12 +40,18 @@ services:
     environment:
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
+      # The Main-Agent reaches the planner via its service name.
+      JOURNEY_PLANNER_URL: http://journey-planner:8001
     volumes:
       - ./backend:/app:z
+      # Shared contract examples, used by the tests of agent and planner.
+      - ./docs/contracts:/docs/contracts:ro,z
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
       db:
+        condition: service_healthy
+      journey-planner:
         condition: service_healthy
     healthcheck:
       test:
@@ -57,6 +63,31 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  # Journey Planner: own service without LLM and without database. It answers
+  # search requests of the Main-Agent (docs/SEARCH_CONTRACT.md). Further
+  # services such as the flight service are added below it in the same way.
+  journey-planner:
+    build: ./journey-planner
+    image: traveller-journey-planner:dev
+    environment:
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
+      FLIGHT_PROVIDER: ${FLIGHT_PROVIDER:-dummy}
+    volumes:
+      - ./journey-planner:/app:z
+      - ./docs/contracts:/docs/contracts:ro,z
+    ports:
+      - "127.0.0.1:8001:8001"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3)
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   frontend:
     build:

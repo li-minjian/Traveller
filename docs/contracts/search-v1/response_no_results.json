@@ -1,0 +1,65 @@
+{
+  "status": "no_results",
+  "journeys": [],
+  "no_results": {
+    "reason": "budget",
+    "direction": null,
+    "closest_journey": {
+      "id": "dummy-berlin-lissabon-2027-05-20-via-zuerich-madrid",
+      "legs": [
+        {
+          "mode": "flight",
+          "origin": "Berlin",
+          "destination": "Zürich",
+          "departure": "2027-05-20T06:00:00+02:00",
+          "arrival": "2027-05-20T07:30:00+02:00",
+          "carrier": "Example Air",
+          "number": "EX 5001"
+        },
+        {
+          "mode": "flight",
+          "origin": "Zürich",
+          "destination": "Madrid",
+          "departure": "2027-05-20T08:40:00+02:00",
+          "arrival": "2027-05-20T10:55:00+02:00",
+          "carrier": "Example Air",
+          "number": "EX 5044"
+        },
+        {
+          "mode": "flight",
+          "origin": "Madrid",
+          "destination": "Lissabon",
+          "departure": "2027-05-20T13:00:00+02:00",
+          "arrival": "2027-05-20T13:20:00+01:00",
+          "carrier": "Example Air",
+          "number": "EX 3340"
+        }
+      ],
+      "offers": [
+        {
+          "id": "dummy-berlin-lissabon-2027-05-20-via-zuerich-madrid-a",
+          "provider": "dummy",
+          "price": {
+            "amount": 98.0,
+            "currency": "EUR",
+            "basis": "per_person"
+          }
+        }
+      ],
+      "duration_minutes": 500,
+      "stops": 2,
+      "price": {
+        "amount": 98.0,
+        "currency": "EUR",
+        "basis": "per_person"
+      },
+      "inbound": null,
+      "total_price": {
+        "amount": 98.0,
+        "currency": "EUR",
+        "basis": "per_person"
+      }
+    }
+  },
+  "error": null
+}

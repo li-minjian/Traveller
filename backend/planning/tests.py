@@ -28,6 +28,12 @@ class CreatePlanningSessionTests(TestCase):
         self.assertTrue(body["created_at"].endswith("Z"), "timestamps are UTC")
         self.assertTrue(PlanningSession.objects.filter(id=body["id"]).exists())
 
+    def test_a_new_session_starts_with_one_assumed_traveller(self):
+        body = self.client.post(LIST_URL, {"title": "Trip"}, format="json").json()
+        state = self.client.get(f"{detail_url(body['id'])}trip-state/").json()
+        self.assertEqual(state["trip_state"]["travelers"], {"value": 1, "provenance": "inferred"})
+        self.assertNotIn("travelers", state["missing_fields"])
+
     def test_ignores_client_supplied_id_and_timestamp(self):
         chosen = "00000000-0000-0000-0000-000000000001"
         response = self.client.post(

@@ -27,6 +27,15 @@ export type Paginated<T> = {
   results: T[];
 };
 
+/** A city with flight data, e.g. Lissabon in Portugal. */
+export type Place = {
+  /** Canonical name; the trip form sends exactly this. */
+  name: string;
+  country: string;
+  /** Other spellings and codes in lower case, e.g. "lisbon", "lis". */
+  aliases: string[];
+};
+
 export type ReferenceSplit = 'train' | 'validation' | 'test';
 export type ReferenceLevel = 'easy' | 'medium' | 'hard';
 
@@ -68,6 +77,126 @@ export type ReferenceCaseQuery = {
   page?: number;
 };
 
+/** How the planner learned a trip value. */
+export type Provenance = 'confirmed' | 'inferred' | 'unknown';
+export type Field<T> = { value: T | null; provenance: Provenance };
+export type Money = {
+  amount: number;
+  currency: string;
+  basis: 'per_person' | 'trip_total';
+};
+
+/** Dates as YYYY-MM-DD; a fixed day has `earliest === latest`. */
+export type DateWindow = { earliest: string; latest: string };
+export type TripType = 'round_trip' | 'one_way';
+
+export type TripState = {
+  origin: Field<string>;
+  destination: Field<string>;
+  departure: Field<DateWindow>;
+  /** Window of the return flight. */
+  return: Field<DateWindow>;
+  /** An unknown trip type counts as a round trip. */
+  trip_type: Field<TripType>;
+  travelers: Field<number>;
+  /** For a round trip: price of both flights together. */
+  budget: Field<Money>;
+  /** Per direction. */
+  max_stops: Field<number>;
+};
+
+/**
+ * Trip values set directly, without chat text. Every field is optional and
+ * `null` clears it.
+ */
+export type TripFieldsInput = {
+  origin?: string | null;
+  destination?: string | null;
+  /** A plain YYYY-MM-DD is a fixed day. */
+  departure?: string | DateWindow | null;
+  return?: string | DateWindow | null;
+  trip_type?: TripType | null;
+  travelers?: number | null;
+  /** A plain number is EUR per person. */
+  budget?: number | Money | null;
+  max_stops?: number | null;
+};
+
+export type TripStateResponse = {
+  trip_state: TripState;
+  /** Required fields the planner still needs, in asking order. */
+  missing_fields: string[];
+};
+
+export type Leg = {
+  mode: string;
+  origin: string;
+  destination: string;
+  /** ISO local time with offset, e.g. 2027-05-20T06:40:00+02:00. */
+  departure: string;
+  arrival: string;
+  carrier: string | null;
+  number: string | null;
+};
+export type Offer = { id: string; provider: string; price: Money };
+/** One direction of a journey. */
+export type FlightPart = {
+  id: string;
+  legs: Leg[];
+  offers: Offer[];
+  duration_minutes: number;
+  stops: number;
+  price: Money | null;
+};
+/** The outbound flight plus, for a round trip, the return flight. */
+export type Journey = FlightPart & {
+  /** The return flight; null for one-way. */
+  inbound: FlightPart | null;
+  /** Outbound + inbound; equals `price` for one-way. */
+  total_price: Money | null;
+};
+export type JourneyTag = 'cheapest' | 'fastest' | 'recommended';
+export type JourneyReview = { tags: JourneyTag[]; warnings: string[] };
+
+export type SearchResult = {
+  status: 'ok' | 'no_results' | 'error';
+  journeys: Journey[];
+  /** Keyed by journey ID. */
+  review: Record<string, JourneyReview>;
+  no_results: {
+    reason: 'budget' | 'max_stops' | 'no_connection';
+    /** The direction that could not be served, if only one failed. */
+    direction: 'outbound' | 'inbound' | null;
+    closest_journey: Journey | null;
+  } | null;
+  alternative: {
+    strategy: 'flexible_dates' | 'more_stops';
+    description: string;
+    journeys: Journey[];
+    review: Record<string, JourneyReview>;
+    request: unknown;
+  } | null;
+};
+
+export type ChatMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  /** ISO 8601 timestamp in UTC. */
+  created_at: string;
+  result: SearchResult | null;
+};
+
+export type ChatTurn = {
+  user_message: ChatMessage | null;
+  reply: ChatMessage;
+  trip_state: TripState;
+  missing_fields: string[];
+};
+
+/** With only `fields` the turn has no user message; the agent still replies. */
+export type ChatInput = { text?: string; fields?: TripFieldsInput };
+
 /**
  * - `unreachable`: no answer from Django (connection failed, or the proxy or
  *   gateway responded with a server error instead).
@@ -96,6 +225,25 @@ export class ApiError extends Error {
     this.code = options.code;
     this.fields = options.fields ?? {};
   }
+}
+
+/**
+ * Field errors of a nested object. A chat turn with invalid `fields` answers
+ * with `error.fields.fields = { <fieldName>: [reason] }`; this returns that
+ * inner map for `name = 'fields'`.
+ */
+export function nestedFieldErrors(error: ApiError, name: string): FieldErrors {
+  const nested: unknown = (error.fields as Record<string, unknown>)[name];
+  if (typeof nested !== 'object' || nested === null || Array.isArray(nested))
+    return {};
+  const result: FieldErrors = {};
+  for (const [key, value] of Object.entries(nested)) {
+    const reasons = (Array.isArray(value) ? value : [value]).filter(
+      (reason): reason is string => typeof reason === 'string',
+    );
+    if (reasons.length > 0) result[key] = reasons;
+  }
+  return result;
 }
 
 type ErrorBody = {
@@ -192,6 +340,35 @@ export const backend = {
       `/planning-sessions/${encodeURIComponent(id)}/`,
       { signal },
     ),
+
+  sendMessage: (sessionId: string, input: ChatInput, signal?: AbortSignal) =>
+    request<ChatTurn>(
+      `/planning-sessions/${encodeURIComponent(sessionId)}/messages/`,
+      { method: 'POST', body: JSON.stringify(input), signal },
+    ),
+
+  /** Messages of a session, oldest first. */
+  listMessages: (sessionId: string, page?: number, signal?: AbortSignal) =>
+    request<Paginated<ChatMessage>>(
+      `/planning-sessions/${encodeURIComponent(sessionId)}/messages/${
+        page === undefined ? '' : `?page=${page}`
+      }`,
+      { signal },
+    ),
+
+  /** Trip data the planner knows so far, e.g. to fill the form on load. */
+  getTripState: (sessionId: string, signal?: AbortSignal) =>
+    request<TripStateResponse>(
+      `/planning-sessions/${encodeURIComponent(sessionId)}/trip-state/`,
+      { signal },
+    ),
+
+  /**
+   * Cities with flight data, all in one page, sorted by country and name.
+   * Answers 503 while the journey planner is unreachable.
+   */
+  listPlaces: (signal?: AbortSignal) =>
+    request<Paginated<Place>>('/places/', { signal }),
 
   listReferenceCases: (query: ReferenceCaseQuery = {}, signal?: AbortSignal) => {
     const params = new URLSearchParams();

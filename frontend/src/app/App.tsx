@@ -2,12 +2,14 @@ import { Compass } from 'lucide-react';
 import { useLayoutEffect, useRef } from 'react';
 import {
   Link,
+  NavLink,
   Navigate,
   Outlet,
   ScrollRestoration,
   createBrowserRouter,
   useLocation,
 } from 'react-router';
+import { ChatPage } from '../features/Chat';
 import { SystemStatusPage } from '../features/SystemStatus';
 
 function Layout() {
@@ -31,6 +33,10 @@ function Layout() {
             <Compass size={21} />
             Traveller
           </Link>
+          <nav className="site-nav" aria-label="Main">
+            <NavLink to="/chat">Chat</NavLink>
+            <NavLink to="/status">Status</NavLink>
+          </nav>
         </div>
       </header>
       <main id="main-content" tabIndex={-1} ref={main}>
@@ -53,7 +59,8 @@ export const router = createBrowserRouter([
   {
     element: <Layout />,
     children: [
-      { index: true, element: <Navigate to="/status" replace /> },
+      { index: true, element: <Navigate to="/chat" replace /> },
+      { path: 'chat', element: <ChatPage /> },
       { path: 'status', element: <SystemStatusPage /> },
       {
         path: '*',

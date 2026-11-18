@@ -1,0 +1,242 @@
+{
+  "status": "ok",
+  "journeys": [
+    {
+      "id": "dummy-berlin-lissabon-2027-05-20-via-zuerich-madrid",
+      "legs": [
+        {
+          "mode": "flight",
+          "origin": "Berlin",
+          "destination": "Zürich",
+          "departure": "2027-05-20T06:00:00+02:00",
+          "arrival": "2027-05-20T07:30:00+02:00",
+          "carrier": "Example Air",
+          "number": "EX 5001"
+        },
+        {
+          "mode": "flight",
+          "origin": "Zürich",
+          "destination": "Madrid",
+          "departure": "2027-05-20T08:40:00+02:00",
+          "arrival": "2027-05-20T10:55:00+02:00",
+          "carrier": "Example Air",
+          "number": "EX 5044"
+        },
+        {
+          "mode": "flight",
+          "origin": "Madrid",
+          "destination": "Lissabon",
+          "departure": "2027-05-20T13:00:00+02:00",
+          "arrival": "2027-05-20T13:20:00+01:00",
+          "carrier": "Example Air",
+          "number": "EX 3340"
+        }
+      ],
+      "offers": [
+        {
+          "id": "dummy-berlin-lissabon-2027-05-20-via-zuerich-madrid-a",
+          "provider": "dummy",
+          "price": {
+            "amount": 98.0,
+            "currency": "EUR",
+            "basis": "per_person"
+          }
+        }
+      ],
+      "duration_minutes": 500,
+      "stops": 2,
+      "price": {
+        "amount": 98.0,
+        "currency": "EUR",
+        "basis": "per_person"
+      },
+      "inbound": null,
+      "total_price": {
+        "amount": 98.0,
+        "currency": "EUR",
+        "basis": "per_person"
+      }
+    },
+    {
+      "id": "dummy-berlin-lissabon-2027-05-20-via-frankfurt",
+      "legs": [
+        {
+          "mode": "flight",
+          "origin": "Berlin",
+          "destination": "Frankfurt",
+          "departure": "2027-05-20T07:05:00+02:00",
+          "arrival": "2027-05-20T08:15:00+02:00",
+          "carrier": "Example Air",
+          "number": "EX 2100"
+        },
+        {
+          "mode": "flight",
+          "origin": "Frankfurt",
+          "destination": "Lissabon",
+          "departure": "2027-05-20T08:40:00+02:00",
+          "arrival": "2027-05-20T10:45:00+01:00",
+          "carrier": "Example Air",
+          "number": "EX 2188"
+        }
+      ],
+      "offers": [
+        {
+          "id": "dummy-berlin-lissabon-2027-05-20-via-frankfurt-a",
+          "provider": "dummy",
+          "price": {
+            "amount": 119.0,
+            "currency": "EUR",
+            "basis": "per_person"
+          }
+        }
+      ],
+      "duration_minutes": 280,
+      "stops": 1,
+      "price": {
+        "amount": 119.0,
+        "currency": "EUR",
+        "basis": "per_person"
+      },
+      "inbound": null,
+      "total_price": {
+        "amount": 119.0,
+        "currency": "EUR",
+        "basis": "per_person"
+      }
+    },
+    {
+      "id": "dummy-berlin-lissabon-2027-05-20-via-madrid",
+      "legs": [
+        {
+          "mode": "flight",
+          "origin": "Berlin",
+          "destination": "Madrid",
+          "departure": "2027-05-20T10:15:00+02:00",
+          "arrival": "2027-05-20T13:20:00+02:00",
+          "carrier": "Example Air",
+          "number": "EX 3310"
+        },
+        {
+          "mode": "flight",
+          "origin": "Madrid",
+          "destination": "Lissabon",
+          "departure": "2027-05-20T14:50:00+02:00",
+          "arrival": "2027-05-20T15:10:00+01:00",
+          "carrier": "Example Air",
+          "number": "EX 3344"
+        }
+      ],
+      "offers": [
+        {
+          "id": "dummy-berlin-lissabon-2027-05-20-via-madrid-a",
+          "provider": "dummy",
+          "price": {
+            "amount": 142.5,
+            "currency": "EUR",
+            "basis": "per_person"
+          }
+        }
+      ],
+      "duration_minutes": 355,
+      "stops": 1,
+      "price": {
+        "amount": 142.5,
+        "currency": "EUR",
+        "basis": "per_person"
+      },
+      "inbound": null,
+      "total_price": {
+        "amount": 142.5,
+        "currency": "EUR",
+        "basis": "per_person"
+      }
+    },
+    {
+      "id": "dummy-berlin-lissabon-2027-05-20-via-paris",
+      "legs": [
+        {
+          "mode": "flight",
+          "origin": "Berlin",
+          "destination": "Paris",
+          "departure": "2027-05-20T12:30:00+02:00",
+          "arrival": "2027-05-20T14:20:00+02:00",
+          "carrier": "Example Air",
+          "number": "EX 4012"
+        },
+        {
+          "mode": "flight",
+          "origin": "Paris",
+          "destination": "Lissabon",
+          "departure": "2027-05-20T15:45:00+02:00",
+          "arrival": "2027-05-20T17:15:00+01:00",
+          "carrier": "Example Air",
+          "number": "EX 4090"
+        }
+      ],
+      "offers": [
+        {
+          "id": "dummy-berlin-lissabon-2027-05-20-via-paris-a",
+          "provider": "dummy",
+          "price": {
+            "amount": 164.0,
+            "currency": "EUR",
+            "basis": "per_person"
+          }
+        }
+      ],
+      "duration_minutes": 345,
+      "stops": 1,
+      "price": {
+        "amount": 164.0,
+        "currency": "EUR",
+        "basis": "per_person"
+      },
+      "inbound": null,
+      "total_price": {
+        "amount": 164.0,
+        "currency": "EUR",
+        "basis": "per_person"
+      }
+    },
+    {
+      "id": "dummy-berlin-lissabon-2027-05-20-direct-early",
+      "legs": [
+        {
+          "mode": "flight",
+          "origin": "Berlin",
+          "destination": "Lissabon",
+          "departure": "2027-05-20T06:40:00+02:00",
+          "arrival": "2027-05-20T09:35:00+01:00",
+          "carrier": "Example Air",
+          "number": "EX 1201"
+        }
+      ],
+      "offers": [
+        {
+          "id": "dummy-berlin-lissabon-2027-05-20-direct-early-a",
+          "provider": "dummy",
+          "price": {
+            "amount": 189.0,
+            "currency": "EUR",
+            "basis": "per_person"
+          }
+        }
+      ],
+      "duration_minutes": 235,
+      "stops": 0,
+      "price": {
+        "amount": 189.0,
+        "currency": "EUR",
+        "basis": "per_person"
+      },
+      "inbound": null,
+      "total_price": {
+        "amount": 189.0,
+        "currency": "EUR",
+        "basis": "per_person"
+      }
+    }
+  ],
+  "no_results": null,
+  "error": null
+}

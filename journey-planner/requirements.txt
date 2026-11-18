@@ -1,0 +1,8 @@
+# Exakt gepinnte Abhängigkeiten des Journey Planners (wie im Backend).
+# Direkte Abhängigkeiten
+Django==5.2.19
+djangorestframework==3.18.3
+
+# Transitive Abhängigkeiten
+asgiref==3.13.0
+sqlparse==0.6.1
