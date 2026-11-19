@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router';
 import { MessageComposer } from './MessageComposer';
+import { SignIn } from './SignIn';
 import { exampleRequest } from './demo';
 import './v1.css';
 
@@ -17,7 +18,7 @@ export function LandingPage() {
         <Link to="/" className="v1-wordmark" aria-label="Traveller home">traveller.</Link>
         <div className="v1-nav-actions">
           <Link to="/chat">Workspace</Link>
-          <span className="v1-pill">UI concept · v0.1</span>
+          <SignIn />
         </div>
       </nav>
       <main id="main-content" tabIndex={-1} className="v1-home-content">

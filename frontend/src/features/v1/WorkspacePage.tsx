@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { journey } from '../../mocks/journey';
 import { localTime } from '../chat/format';
 import { MessageComposer } from './MessageComposer';
+import { SignIn } from './SignIn';
 import { ContextContent, ContextEditor } from './TravelContext';
 import { applyTrip, displayDate, exampleLeg, newWorkspace, queueMessage, reply } from './demo';
 import type { TripContext, Workspace } from './demo';
@@ -139,17 +140,10 @@ export function WorkspacePage() {
           <p>Your journey</p>
           <a href="#main-content" aria-current="true">{journeyTitle}</a>
         </div>
-        <p className="v1-side-footer">
-          <span aria-hidden="true" /> Demo preview<br />Simulated conversation &amp; flights
-        </p>
+        <SignIn guest />
       </aside>
       <main id="main-content" ref={main} tabIndex={-1} className="v1-conversation">
-        <header className="v1-work-header">
-          <Link to="/" className="v1-wordmark v1-mobile-brand" aria-label="Traveller home">traveller.</Link>
-          <h1>Planning workspace</h1>
-          <span>UI concept</span>
-          <button type="button" onClick={reset} aria-label="New journey"><Plus size={10} aria-hidden="true" /> New</button>
-        </header>
+        <h1 className="v1-visually-hidden">Planning workspace</h1>
         <details className="v1-mobile-context" ref={mobileContext}>
           <summary>Travel context</summary>
           <button className="v1-context-edit" type="button" disabled={!!pending} onClick={edit}>Edit</button>

@@ -35,6 +35,18 @@ async function send(user: ReturnType<typeof userEvent.setup>, text: string) {
 }
 
 describe('Traveller UI V1', () => {
+  it('opens the sign-in placeholder from the landing and the guest account', async () => {
+    const { user } = open();
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(screen.getByRole('dialog', { name: 'Sign in' }).textContent).toContain('Traveller accounts are coming soon.');
+
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.queryByRole('dialog', { name: 'Sign in' })).toBeNull();
+    await user.click(screen.getByRole('link', { name: 'Workspace' }));
+    await user.click(screen.getByRole('button', { name: 'Guest account, sign in' }));
+    expect(screen.getByRole('dialog', { name: 'Sign in' }).textContent).toContain('Traveller accounts are coming soon.');
+  });
+
   it('ignores blank input and hands off one trimmed request, even in Strict Mode', async () => {
     const { router, user } = open();
     const input = screen.getByRole('textbox', { name: 'Describe your trip' });
@@ -54,7 +66,7 @@ describe('Traveller UI V1', () => {
     expect(await conversation.findByRole('article', { name: 'Berlin → Lisbon' })).toBeTruthy();
     expect(conversation.getByText('Demo only')).toBeTruthy();
 
-    await user.click(within(screen.getByRole('main')).getByRole('button', { name: 'New journey' }));
+    await user.click(screen.getByRole('button', { name: 'New journey' }));
     expect(screen.getByRole('heading', { name: 'Let’s plan your trip.' })).toBeTruthy();
     expect(screen.queryByRole('article')).toBeNull();
     expect(within(screen.getByRole('complementary', { name: 'Travel context' })).getAllByText('Not set')).toHaveLength(3);
@@ -105,7 +117,7 @@ describe('Traveller UI V1', () => {
     const { user } = open('/chat');
     await send(user, 'Berlin to Lisbon');
     expect(screen.getByText('Preparing a demo reply…')).toBeTruthy();
-    await user.click(within(screen.getByRole('main')).getByRole('button', { name: 'New journey' }));
+    await user.click(screen.getByRole('button', { name: 'New journey' }));
     await send(user, 'Paris');
     expect(await screen.findByText(/This demo uses scripted replies/)).toBeTruthy();
     expect(screen.queryByText(confirmation)).toBeNull();

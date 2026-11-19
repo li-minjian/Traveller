@@ -265,22 +265,47 @@
   overflow-wrap: anywhere;
 }
 
-.v1-side-footer {
-  margin-top: auto;
-  padding: 10px 13px;
-  color: var(--v1-muted);
-  font-size: 11px;
-  line-height: 1.5;
+.v1-sign-in {
+  min-height: 36px;
+  padding: 8px 15px;
+  border: 1px solid var(--v1-line);
+  border-radius: 99px;
+  color: var(--v1-ink);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-.v1-side-footer span {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 6px;
-  border-radius: 50%;
-  background: #8ab2a1;
+.v1-sign-in:hover,
+.v1-account:hover { background: var(--v1-tint); }
+
+.v1-account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 12px;
+  color: var(--v1-ink);
+  background: transparent;
+  text-align: left;
 }
+
+.v1-account-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 32px;
+  height: 32px;
+  border: 1px solid var(--v1-line);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--v1-muted);
+}
+
+.v1-account-label { display: grid; gap: 2px; font-size: 13px; }
+.v1-account-label small { color: var(--v1-muted); font-size: 11px; }
 
 .v1-conversation {
   display: flex;
@@ -289,35 +314,6 @@
   min-width: 0;
 }
 
-.v1-work-header {
-  padding: 29px 45px 14px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.v1-work-header h1,
-.v1-context h2 {
-  margin-right: auto;
-  font-size: 15px;
-  letter-spacing: -.02em;
-  font-weight: 650;
-}
-
-.v1-work-header span { font-size: 12px; color: var(--v1-muted); }
-
-.v1-work-header button {
-  background: none;
-  border: 0;
-  color: var(--v1-muted);
-  font-size: 11px;
-  padding: 8px 0;
-  white-space: nowrap;
-}
-
-.v1-work-header button:hover { color: var(--v1-ink); }
-
-.v1-mobile-brand,
 .v1-mobile-context { display: none; }
 
 .v1-stream {
@@ -454,7 +450,7 @@
   gap: 10px;
 }
 
-.v1-context h2 { font-size: 14px; }
+.v1-context h2 { font-size: 14px; letter-spacing: -.02em; font-weight: 650; }
 
 .v1-context-edit {
   border: 0;
@@ -502,6 +498,7 @@
 .v1-dialog::backdrop { background: #17171b52; }
 .v1-dialog header { margin-bottom: 25px; }
 .v1-dialog h2 { font-size: 20px; letter-spacing: -.04em; font-weight: 650; }
+.v1-sign-in-dialog p { margin-top: 12px; color: var(--v1-muted); }
 
 .v1-dialog-close {
   display: grid;
@@ -549,7 +546,7 @@
   color: #444;
 }
 
-.v1-dialog-actions button[type="submit"] { background: var(--v1-ink); color: #fff; }
+.v1-dialog-actions button:is([type="submit"], .v1-dialog-primary) { background: var(--v1-ink); color: #fff; }
 
 @media (max-width: 1080px) {
   .v1-workspace { grid-template-columns: 190px minmax(0, 1fr); }
@@ -560,7 +557,7 @@
     max-height: 40dvh;
     overflow: auto;
     width: min(calc(100% - 40px), 660px);
-    margin: 0 auto;
+    margin: 24px auto 0;
     padding-inline: 15px;
     border: 1px solid #eeeef1;
     border-radius: 13px;
@@ -587,14 +584,29 @@
   .v1-hero-composer textarea { min-height: 66px; font-size: 14px; }
   .v1-home-footer { padding: 17px 21px; }
   .v1-home-footer span:last-child { display: none; }
-  .v1-workspace { grid-template-columns: minmax(0, 1fr); }
-  .v1-sidebar { display: none; }
-  .v1-work-header { padding: 14px 18px 10px; gap: 10px; min-height: 61px; }
-  .v1-mobile-brand { display: inline; font-size: 19px; letter-spacing: -1.4px; }
-  .v1-work-header h1 { font-size: 13px; }
-  .v1-work-header span { display: none; }
-  .v1-work-header button { padding: 10px 4px; }
-  .v1-mobile-context { width: calc(100% - 36px); }
+  .v1-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .v1-sidebar {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 18px;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid #eeeef0;
+  }
+  .v1-sidebar .v1-wordmark {
+    margin: 0 auto 0 0;
+    align-self: center;
+    font-size: 22px;
+  }
+  .v1-side-new { width: auto; min-height: 44px; gap: 5px; padding: 8px 10px; white-space: nowrap; }
+  .v1-account { margin-top: 0; padding: 6px; }
+  .v1-account-label,
+  .v1-side-current { display: none; }
+  .v1-mobile-context { width: calc(100% - 36px); margin-top: 12px; }
   .v1-stream { padding: 20px 18px 25px; }
   .v1-welcome { margin: 50px 0 44px; }
   .v1-welcome h2 { font-size: 36px; }
