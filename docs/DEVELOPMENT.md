@@ -22,11 +22,11 @@ docker compose ps                                                     # nach ~30
 docker compose exec backend python manage.py import_reference_cases   # Referenzdaten laden
 ```
 
-Danach öffnet [http://localhost:3000](http://localhost:3000) den Chat unter `/chat`. Die Statusseite [http://localhost:3000/status](http://localhost:3000/status) zeigt „Connected“ und „1,225 cases imported“. Die Migrationen laufen beim Start des Backends automatisch.
+Danach öffnet [http://localhost:3000](http://localhost:3000) die Traveller-Startseite. Der Workspace liegt unter `/chat`. Die Statusseite [http://localhost:3000/status](http://localhost:3000/status) zeigt „Connected“ und „1,225 cases imported“. Die Migrationen laufen beim Start des Backends automatisch.
 
 | Service | Adresse | Inhalt |
 | --- | --- | --- |
-| `frontend` | [http://localhost:3000](http://localhost:3000) | Vite-Dev-Server mit der Chat-Seite `/chat` (Startseite, Chat und Reiseformular) und der Statusseite `/status`, leitet `/api` an das Backend weiter |
+| `frontend` | [http://localhost:3000](http://localhost:3000) | Vite-Dev-Server mit Startseite `/`, Workspace `/chat`, API-Chat `/chat?view=classic` und Statusseite `/status`. Leitet `/api` an das Backend weiter. |
 | `backend` | [http://localhost:8000/api/v1/health/](http://localhost:8000/api/v1/health/) | Django-Entwicklungsserver mit der REST-API, dem Main-Agent und dem Optimization Agent |
 | `journey-planner` | [http://localhost:8001/health](http://localhost:8001/health) | Django-Entwicklungsserver des Journey Planners mit `POST /plan`; ohne Datenbank und ohne LLM, liefert erfundene Beispielflüge zwischen 30 europäischen Städten |
 | `db` | kein Host-Port | PostgreSQL 18, nur im Compose-Netz unter dem Namen `db` erreichbar |
@@ -179,11 +179,26 @@ Die Frontend-Befehle laufen im Container, Node.js wird auf dem eigenen Rechner n
 
 **Tests des Journey Planners**, derzeit 41, in `journey-planner/planner/tests.py`: Endpunkte `POST /plan` und `GET /health`, Validierung des Suchauftrags, Filter und Rangfolge, Hin- und Rückflug als Paar, „keine Treffer“ mit Grund und Richtung, der Ausfall eines Providers sowie die Beispielflüge des Dummy-Providers. Sie brauchen keine Datenbank und vergleichen die Antworten mit denselben Vertragsbeispielen wie die Backend-Tests.
 
-**Frontend-Unit-Tests** prüfen den zentralen API-Client in `frontend/tests/api.test.ts`, darunter `sendMessage`, `listMessages` und `getTripState`, und den Entwurf des Reiseformulars in `frontend/tests/tripDraft.test.ts`. Die Komponenten der Chat-Seite haben keine Tests. Browser- und End-to-End-Tests gibt es nicht.
+**Frontend-Unit-Tests** prüfen den zentralen API-Client in `frontend/tests/api.test.ts`, darunter `sendMessage`, `listMessages` und `getTripState`, und den Entwurf des Reiseformulars in `frontend/tests/tripDraft.test.ts`. Komponententests für den API-Chat mit MSW und für den Workspace liegen in `frontend/tests/chat.test.tsx` und `frontend/tests/v1.test.tsx`.
 
 **Stand der Prüfung:** Am 18.11.2026 liefen alle drei Testsuiten im Compose-Setup unter Windows, die Backend-Tests gegen PostgreSQL, alle grün. Das war vor der Erweiterung um den Rückflug. Danach liefen die 41 Tests des Journey Planners lokal ohne Docker, alle grün. Für Backend und Frontend gilt der jeweils letzte eigene Testlauf; eine Zahl steht hier bewusst nicht.
 
-## Frontend ohne Backend
+## Traveller Frontend V1
+
+Mit `npm run dev` im Verzeichnis `frontend/` starten. Auf `/` „Berlin → Lisbon“
+auswählen und im Workspace mit `yes` antworten. Der Workspace zeigt einen
+Beispielflug aus der vorhandenen Fixture. Antworten und Änderungen im
+Reisekontext bleiben im lokalen React-Zustand. „New journey“ setzt sie zurück.
+
+`/chat?scenario=empty` und `/chat?scenario=api-error` zeigen nach derselben
+Bestätigung den leeren bzw. den simulierten Fehlerzustand. Der Workspace
+verwendet in jedem Build-Modus lokale Skripte. Die Anbindung des Workspace an
+Django, Journey Planner und Agent ist ein separater Arbeitsschritt.
+
+`/chat?view=classic` öffnet den bisherigen API-Chat. Dort und auf `/status`
+verwendet der normale Modus Django und der Mock- oder Demo-Modus MSW.
+
+## API-Chat ohne Backend
 
 ```bash
 cd frontend
@@ -191,18 +206,18 @@ npm ci
 npm run dev:mock
 ```
 
-Öffne [localhost:5174/chat](http://localhost:5174/chat). Die Statuszeile
-„Mock API active“ zeigt das aktive Szenario. Der Service Worker beantwortet
+Öffne den [API-Chat im lokalen Mock-Modus](http://localhost:5174/chat?view=classic). Die Statuszeile
+„Demo mode“ zeigt das aktive Szenario. Der Service Worker beantwortet
 dieselben `/api/v1/`-Anfragen wie Django. Mock-Sitzungen und Verlauf bleiben
 beim Neuladen im selben Browser-Tab verfügbar. Mit „New conversation“ beginnt
 eine neue Sitzung. Port 5174 trennt die Mock-Sitzungen vom üblichen Real-Modus.
 
 | Szenario | Ablauf |
 | --- | --- |
-| `/chat` | Zuerst z. B. `I want to travel` senden, um eine Rückfrage zu sehen. Im Reiseformular Angaben ändern und mit „Apply changes“ übernehmen. Für einen Treffer `Berlin to Lissabon` senden und den angenommenen Zielort mit `yes` bestätigen. Der Beispieldatensatz enthält einen Direktflug am 20.05.2027. |
-| `/chat?scenario=empty` | Dieselbe Beispielroute bestätigen. Die Antwort meldet keine Treffer. |
-| `/chat?scenario=backend-error` | Eine Nachricht senden. Der Chat erhält HTTP 503. |
-| `/chat?scenario=api-error` | Eine Nachricht senden. Der Chat erhält einen Validierungsfehler mit HTTP 400. |
+| `/chat?view=classic` | Zuerst z. B. `I want to travel` senden, um eine Rückfrage zu sehen. Im Reiseformular Angaben ändern und mit „Apply changes“ übernehmen. Für einen Treffer `Berlin to Lissabon` senden und den angenommenen Zielort mit `yes` bestätigen. Der Beispieldatensatz enthält einen Direktflug am 20.05.2027. |
+| `/chat?view=classic&scenario=empty` | Dieselbe Beispielroute bestätigen. Die Antwort meldet keine Treffer. |
+| `/chat?view=classic&scenario=backend-error` | Eine Nachricht senden. Der Chat erhält HTTP 503. |
+| `/chat?view=classic&scenario=api-error` | Eine Nachricht senden. Der Chat erhält einen Validierungsfehler mit HTTP 400. |
 
 Die Demo verwendet festgelegte Antworten und eine Flug-Fixture aus dem
 Suchvertrag. Weitere Orte, Daten, Rückflüge und freie Sprachinterpretation
@@ -214,7 +229,8 @@ standardmäßig Django auf Port 8000, unter Compose den Service `backend`. Der n
 
 Die bestehende URL (z. B. `https://traveller-vs.vercel.app/chat`) kann
 eine **ausdrücklich aktivierte Demo** ohne Django-Backend ausliefern. Sie verwendet
-dieselben MSW-Handler und den vorhandenen API-Client wie der lokale Mock-Modus.
+unter `/chat?view=classic` und `/status` dieselben MSW-Handler und den vorhandenen
+API-Client wie der lokale Mock-Modus.
 Alle Flüge, Preise, Agentenantworten und Sitzungen in diesem Modus sind simuliert;
 das Banner `Demo mode · Simulated travel data` macht das sichtbar.
 Es gibt keine echten Buchungen oder einen echten LLM-Aufruf.
@@ -248,10 +264,10 @@ test -s dist/mockServiceWorker.js
 npm run preview -- --host 127.0.0.1 --port 4173
 ```
 
-Dann `http://127.0.0.1:4173/chat` öffnen, `Berlin to Lissabon` senden
+Dann `http://127.0.0.1:4173/chat?view=classic` öffnen, `Berlin to Lissabon` senden
 und `yes` bestätigen. Ein Beispielflug vom **20.05.2027** erscheint.
-Weitere Szenarien: `?scenario=empty`, `?scenario=backend-error`
-und `?scenario=api-error`. Demo-Nachrichten und -Sitzungen werden nur im
+Weitere Szenarien lassen sich über `&scenario=empty`, `&scenario=backend-error`
+oder `&scenario=api-error` auswählen. Demo-Nachrichten und -Sitzungen werden nur im
 `sessionStorage` des Browser-Tabs gespeichert.
 
 **Zur echten API zurückkehren:** In `frontend/vercel.json` den
