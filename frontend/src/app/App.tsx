@@ -1,9 +1,9 @@
 import { Compass } from 'lucide-react';
 import { useLayoutEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
 import {
   Link,
   NavLink,
-  Navigate,
   Outlet,
   ScrollRestoration,
   createBrowserRouter,
@@ -11,8 +11,10 @@ import {
 } from 'react-router';
 import { ChatPage } from '../features/Chat';
 import { SystemStatusPage } from '../features/SystemStatus';
+import { LandingPage } from '../features/v1/LandingPage';
+import { WorkspacePage } from '../features/v1/WorkspacePage';
 
-function Layout() {
+function Layout({ children }: { children?: ReactNode }) {
   const { pathname } = useLocation();
   const main = useRef<HTMLElement>(null);
   const lastPath = useRef(pathname);
@@ -34,13 +36,13 @@ function Layout() {
             Traveller
           </Link>
           <nav className="site-nav" aria-label="Main">
-            <NavLink to="/chat">Chat</NavLink>
+            <NavLink to="/chat?view=classic">Chat</NavLink>
             <NavLink to="/status">Status</NavLink>
           </nav>
         </div>
       </header>
       <main id="main-content" tabIndex={-1} ref={main}>
-        <Outlet />
+        {children ?? <Outlet />}
       </main>
       <footer className="site-footer">
         <div className="page">
@@ -55,12 +57,20 @@ function Layout() {
   );
 }
 
-export const router = createBrowserRouter([
+function ChatRoute() {
+  const { search } = useLocation();
+  if (new URLSearchParams(search).get('view') === 'classic') {
+    return <Layout><ChatPage /></Layout>;
+  }
+  return <WorkspacePage />;
+}
+
+export const routes = [
+  { index: true, element: <LandingPage /> },
+  { path: 'chat', element: <ChatRoute /> },
   {
     element: <Layout />,
     children: [
-      { index: true, element: <Navigate to="/chat" replace /> },
-      { path: 'chat', element: <ChatPage /> },
       { path: 'status', element: <SystemStatusPage /> },
       {
         path: '*',
@@ -75,4 +85,6 @@ export const router = createBrowserRouter([
       },
     ],
   },
-]);
+];
+
+export const router = createBrowserRouter(routes);
