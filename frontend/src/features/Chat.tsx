@@ -1,33 +1,34 @@
-import { Plane, Plus, RefreshCw, Send } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  ArrowUp,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  Menu,
+  Plus,
+  RefreshCw,
+  Share2,
+} from 'lucide-react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { ApiError, backend, nestedFieldErrors } from '../api/client';
+import { ApiError, backend } from '../api/client';
 import type {
   ChatMessage,
   ChatTurn,
-  FieldErrors,
-  Place,
   TripState,
   TripStateResponse,
 } from '../api/client';
-import { Eyebrow } from '../components/ui';
 import { Results } from './chat/Results';
-import { TripForm } from './chat/TripForm';
-import {
-  changedFields,
-  draftErrors,
-  draftFromState,
-  emptyTripState,
-  fieldKeys,
-  mergeDraft,
-  requiredFields,
-} from './chat/tripDraft';
-import type { FieldKey, TripDraft } from './chat/tripDraft';
+import { ItineraryPanel } from './chat/ItineraryPanel';
+import { MapPanel } from './chat/MapPanel';
+import { demoItinerary } from './chat/itinerary';
+import type { Itinerary } from './chat/itinerary';
+import { emptyTripState, requiredFields } from './chat/tripDraft';
 
 /**
- * Planning workspace: the chat with the planning agent on the left, the trip
- * data as an editable form on the right. One planning session per
- * conversation; whatever the form leaves open, the agent asks for.
+ * Planning workspace: three-panel layout.
+ *   Left   – chat with the planning agent
+ *   Center – itinerary steps by day
+ *   Right  – interactive map with georeferenced markers
  */
 
 const chatSessionKey = 'traveller.chatSessionId';
@@ -84,8 +85,8 @@ async function loadTrip(sessionId: string, signal: AbortSignal) {
   try {
     return toTrip(await backend.getTripState(sessionId, signal));
   } catch (reason) {
-    // Without the trip state the form starts empty and fills with the
-    // first turn; a missing session shows up when the history is loaded.
+    // Without the trip state the panel starts empty and fills with the first
+    // turn; a missing session shows up when the history is loaded.
     if (reason instanceof ApiError && reason.status === 404) return emptyTrip;
     throw reason;
   }
@@ -113,31 +114,68 @@ function describeError(error: unknown) {
   return details ? `${error.message} ${details}` : error.message;
 }
 
+/** "2027-05-20 – 2027-05-24", or a note that the agent still needs dates. */
+function formatWindow(value: TripState['departure']['value']) {
+  if (!value) return 'Not set yet';
+  return value.earliest === value.latest
+    ? value.earliest
+    : `${value.earliest} – ${value.latest}`;
+}
+
 type Start = { fresh: boolean };
-/** The running request: a chat message, or form fields (`text: null`). */
-type Pending = { text: string | null };
+/** The running request. */
+type Pending = { text: string };
+
+/** Suggestion chips shown in the chat. */
+type SuggestionGroup = {
+  question: string;
+  options: string[];
+};
+
+const durationSuggestions: SuggestionGroup = {
+  question: 'How long is your weekend in Barcelona?',
+  options: ['2 days', '3 days', '4 days'],
+};
+
+const vibeSuggestions: SuggestionGroup = {
+  question: 'What vibe do you want most?',
+  options: [
+    'Gaudí and architecture',
+    'Food and tapas',
+    'Beaches and waterfront',
+    'Nightlife',
+    'Museums and culture',
+    'Day trip outside the city',
+  ],
+};
+
+const demoDay = demoItinerary.days.at(-1);
+const demoSummary =
+  demoDay?.summary ??
+  'Tell me where you want to go and what you enjoy, and I will build the days around it.';
 
 export function ChatPage() {
   const inputId = useId();
   const list = useRef<HTMLDivElement>(null);
+  const previousMessageCount = useRef(0);
   const [start, setStart] = useState<Start>({ fresh: false });
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [trip, setTrip] = useState<Trip>(emptyTrip);
-  /** Input values of the trip form, including edits not applied yet. */
-  const [draft, setDraft] = useState<TripDraft>(() =>
-    draftFromState(emptyTripState),
-  );
   const [text, setText] = useState('');
   const [pending, setPending] = useState<Pending | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  /** Cities for the From and To suggestions; `null` until loaded. */
-  const [places, setPlaces] = useState<Place[] | null>(null);
-  const [placesUnavailable, setPlacesUnavailable] = useState(false);
 
-  const base = useMemo(() => draftFromState(trip.state), [trip.state]);
+  /** Itinerary state – starts with demo data for visual design. */
+  const [itinerary, setItinerary] = useState<Itinerary>(demoItinerary);
+  /** Hover previews a stop; clicking keeps it selected. */
+  const [hoveredStepId, setHoveredStepId] = useState<string | null>(null);
+  const [selectedStepId, setSelectedStepId] = useState<string | null>(
+    demoItinerary.days[0]?.steps[0]?.id ?? null,
+  );
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [datesOpen, setDatesOpen] = useState(false);
+  const [tripSaved, setTripSaved] = useState(false);
 
   // Open the conversation: reuse the remembered session or create a new one.
   useEffect(() => {
@@ -147,7 +185,6 @@ export function ChatPage() {
     function show(id: string, history: ChatMessage[], loaded: Trip) {
       setMessages(history);
       setTrip(loaded);
-      setDraft(draftFromState(loaded.state));
       setSessionId(id);
     }
 
@@ -181,24 +218,14 @@ export function ChatPage() {
     return () => controller.abort();
   }, [start]);
 
-  // Load the city list once. Without it (e.g. 503 while the journey planner
-  // is down) From and To stay plain text inputs.
+  // Keep the newest message in view, but leave the initial briefing at the top.
   useEffect(() => {
-    const controller = new AbortController();
-    backend
-      .listPlaces(controller.signal)
-      .then((page) => {
-        if (page.results.length > 0) setPlaces(page.results);
-        else setPlacesUnavailable(true);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setPlacesUnavailable(true);
-      });
-    return () => controller.abort();
-  }, []);
-
-  // Keep the newest message in view.
-  useEffect(() => {
+    const changed =
+      messages.length !== previousMessageCount.current ||
+      pending !== null ||
+      error !== null;
+    previousMessageCount.current = messages.length;
+    if (!changed) return;
     const element = list.current;
     if (element) element.scrollTop = element.scrollHeight;
   }, [messages, pending, error]);
@@ -209,83 +236,33 @@ export function ChatPage() {
     if (fresh) {
       setMessages([]);
       setTrip(emptyTrip);
-      setDraft(draftFromState(emptyTripState));
-      setFormError(null);
-      setFieldErrors({});
+      setSelectedStepId(demoItinerary.days[0]?.steps[0]?.id ?? null);
+      setTripSaved(false);
     }
     setStart({ fresh });
   }
 
-  /**
-   * Shows the reply and syncs the form with the new trip state. Fields the
-   * user edited and has not applied keep their local value; `sent` is the
-   * draft this turn applied.
-   */
-  function adopt(turn: ChatTurn, sent: TripDraft | null) {
-    const next = toTrip(turn);
+  /** Shows the reply and syncs the trip state used by the dates summary. */
+  function adopt(turn: ChatTurn) {
     setMessages((current) => [
       ...current,
       ...(turn.user_message ? [turn.user_message] : []),
       turn.reply,
     ]);
-    setTrip(next);
-    setDraft((current) =>
-      mergeDraft(current, base, draftFromState(next.state), sent),
-    );
+    setTrip(toTrip(turn));
   }
 
-  const formProblem =
-    'Some trip details on the right cannot be used yet. Please check the marked fields.';
-
-  /**
-   * One turn: the chat text (if any) together with every form field the user
-   * changed and has not applied yet. The agent then knows the form values
-   * before it reads the message, so it neither ignores them nor asks for them
-   * again. Nothing is sent while the form holds values the server would
-   * reject, so a message is never answered without the user's form input.
-   */
-  async function submit(message: string | null) {
+  async function submit(message: string) {
     if (!sessionId || pending !== null) return;
-    const fields = changedFields(draft, base);
-    const hasFields = Object.keys(fields).length > 0;
-    if (message === null && !hasFields) return;
-
-    const local = draftErrors(draft);
-    if (hasFields && Object.keys(local).length > 0) {
-      setFieldErrors(local);
-      setFormError(formProblem);
-      if (message !== null) setError(formProblem);
-      return;
-    }
-
     setPending({ text: message });
-    if (message !== null) setText('');
+    setText('');
     setError(null);
-    setFormError(null);
-    setFieldErrors({});
     try {
-      const input = {
-        ...(message !== null ? { text: message } : {}),
-        ...(hasFields ? { fields } : {}),
-      };
-      adopt(await backend.sendMessage(sessionId, input), hasFields ? draft : null);
+      adopt(await backend.sendMessage(sessionId, { text: message }));
     } catch (reason) {
       // The failed text goes back into the input so it can be sent again.
-      if (message !== null) setText(message);
-      const errors =
-        reason instanceof ApiError ? nestedFieldErrors(reason, 'fields') : {};
-      const known = Object.keys(errors).some((key) =>
-        (fieldKeys as string[]).includes(key),
-      );
-      if (known) {
-        setFieldErrors(errors);
-        setFormError(formProblem);
-        if (message !== null) setError(formProblem);
-      } else if (message !== null) {
-        setError(describeError(reason));
-      } else {
-        setFormError(describeError(reason));
-      }
+      setText(message);
+      setError(describeError(reason));
     } finally {
       setPending(null);
     }
@@ -297,96 +274,231 @@ export function ChatPage() {
     if (message) void submit(message);
   }
 
-  /** Sends the changed form fields on their own; the agent then replies. */
-  function apply() {
-    void submit(null);
+  function sendSuggestion(suggestion: string) {
+    void submit(suggestion);
   }
 
-  function edit<K extends FieldKey>(key: K, value: TripDraft[K]) {
-    setDraft((current) => ({ ...current, [key]: value }));
-    setFieldErrors((current) => {
-      if (!(key in current)) return current;
-      const rest = { ...current };
-      delete rest[key];
-      return rest;
-    });
-  }
+  const handleStepHover = useCallback((id: string | null) => {
+    setHoveredStepId(id);
+  }, []);
 
-  function discard() {
-    setDraft(base);
-    setFormError(null);
-    setFieldErrors({});
+  const handleStepClick = useCallback((id: string) => {
+    setSelectedStepId(id);
+    setHoveredStepId(null);
+    const card = document.querySelector<HTMLElement>(
+      `[data-step-id="${id}"]`,
+    );
+    card?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+  }, []);
+
+  const handleToggleSaved = useCallback((stepId: string) => {
+    setItinerary((previous) => ({
+      ...previous,
+      days: previous.days.map((day) => ({
+        ...day,
+        steps: day.steps.map((step) =>
+          step.id === stepId ? { ...step, saved: !step.saved } : step,
+        ),
+      })),
+    }));
+  }, []);
+
+  const handleSaveTrip = useCallback(() => {
+    setTripSaved((saved) => !saved);
+  }, []);
+
+  async function share() {
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share({
+          title: 'Traveller itinerary',
+          text: `Results for "${itinerary.title}"`,
+          url: window.location.href,
+        });
+        return;
+      }
+      await navigator.clipboard?.writeText(window.location.href);
+    } catch {
+      // Sharing is a convenience; a cancelled or unavailable API is fine.
+    }
   }
 
   const opening = sessionId === null && error === null;
   const busy = pending !== null;
+  const activeStepId = hoveredStepId ?? selectedStepId;
 
   return (
-    <div className="page chat-page">
-      <header className="system-intro">
-        <Eyebrow>
-          <Plane size={14} /> Flight planner
-        </Eyebrow>
-        <h1>Plan your trip</h1>
-        <p>
-          Describe your trip in the chat or fill in the details yourself.
-          Whatever is still open, the agent asks for.
-        </p>
-      </header>
-
-      <div className="chat-layout">
-        <section
-          className="section-card chat-card"
-          aria-labelledby="chat-heading"
-        >
-          <div className="chat-head">
-            <h2 id="chat-heading">Conversation</h2>
+    <div className="chat-page-new">
+      <div className="chat-three-panel">
+        {/* ─── LEFT: Chat panel ─── */}
+        <section className="chat-panel" aria-labelledby="chat-heading">
+          <div className="chat-panel-header">
             <button
-              className="button button-outline"
               type="button"
-              onClick={() => restart(true)}
-              disabled={busy || opening}
+              className="chat-icon-btn chat-menu-btn"
+              aria-label="Open menu"
+              aria-expanded={menuOpen}
+              onClick={() => {
+                setMenuOpen((open) => !open);
+                setDatesOpen(false);
+              }}
             >
-              <Plus size={15} /> New conversation
+              <Menu size={20} />
             </button>
+
+            <h2 id="chat-heading" className="chat-panel-title">
+              AI Assistant
+            </h2>
+
+            <div className="chat-header-actions">
+              <button
+                type="button"
+                className="chat-new-btn"
+                onClick={() => restart(true)}
+                disabled={busy || opening}
+                aria-label="New chat"
+              >
+                <Plus size={15} /> <span className="chat-new-label">New chat</span>
+              </button>
+              <button
+                type="button"
+                className="chat-icon-btn"
+                onClick={() => void share()}
+                aria-label="Share this itinerary"
+                title="Share this itinerary"
+              >
+                <Share2 size={18} />
+              </button>
+            </div>
+
+            {menuOpen && (
+              <div className="chat-menu" role="menu" aria-label="Main menu">
+                <a
+                  href="/"
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Traveller home
+                </a>
+                <a
+                  href="/status"
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  System status
+                </a>
+              </div>
+            )}
           </div>
 
-          <div
-            className="chat-messages"
-            ref={list}
-            role="log"
-            aria-live="polite"
-            aria-label="Messages"
-            tabIndex={0}
+          <button
+            type="button"
+            className="chat-dates-toggle"
+            aria-expanded={datesOpen}
+            onClick={() => {
+              setDatesOpen((open) => !open);
+              setMenuOpen(false);
+            }}
           >
-            <p className="chat-bubble chat-assistant chat-hint">
-              Tell me where you want to go, e.g. »Ich will mit 2 Leuten vom 20.
-              bis 27. Mai von Berlin nach Lissabon fliegen, maximal 300 € pro
-              Person«
-            </p>
-            {messages.map((message) => (
-              <Message key={message.id} message={message} />
-            ))}
-            {pending !== null && (
-              <>
-                {pending.text !== null && (
+            <CalendarDays size={15} />
+            <span>Dates &amp; travelers</span>
+            <ChevronDown
+              size={15}
+              className={`chat-chevron${datesOpen ? ' is-open' : ''}`}
+            />
+          </button>
+
+          {datesOpen && (
+            <div className="chat-dates-panel">
+              <div>
+                <span>Route</span>
+                <strong>
+                  {trip.state.origin.value ?? 'Not set'} →{' '}
+                  {trip.state.destination.value ?? 'Not set'}
+                </strong>
+              </div>
+              <div>
+                <span>Dates</span>
+                <strong>{formatWindow(trip.state.departure.value)}</strong>
+              </div>
+              <div>
+                <span>Travelers</span>
+                <strong>{trip.state.travelers.value ?? 'Not set'}</strong>
+              </div>
+            </div>
+          )}
+
+          <div className="chat-messages" ref={list} tabIndex={0}>
+            <div
+              className="chat-thread"
+              role="log"
+              aria-live="polite"
+              aria-label="Messages"
+            >
+              {opening && (
+                <p className="system-meta">Opening conversation…</p>
+              )}
+
+              {messages.length === 0 && !opening && (
+                <div className="chat-turn chat-briefing">
+                  <p className="chat-day-label">
+                    Day {demoDay?.dayNumber ?? 1}
+                  </p>
+                  <p className="chat-bubble chat-assistant">{demoSummary}</p>
+                </div>
+              )}
+
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`chat-turn${
+                    message.role === 'user' ? ' chat-turn-user' : ''
+                  }`}
+                >
+                  {message.role === 'assistant' ? (
+                    <>
+                      <p className="chat-bubble chat-assistant">
+                        {message.content}
+                      </p>
+                      {message.result && <Results result={message.result} />}
+                    </>
+                  ) : (
+                    <p className="chat-bubble chat-user">{message.content}</p>
+                  )}
+                </div>
+              ))}
+
+              {pending !== null && (
+                <div className="chat-turn">
                   <p className="chat-bubble chat-user">{pending.text}</p>
-                )}
-                <p className="chat-bubble chat-assistant chat-thinking">
-                  thinking…
-                </p>
-              </>
-            )}
-            {opening && <p className="system-meta">Opening conversation…</p>}
+                  <p className="chat-bubble chat-assistant chat-thinking">
+                    thinking…
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="chat-suggestions" aria-label="Suggested replies">
+              <SuggestionChips
+                group={durationSuggestions}
+                onSelect={sendSuggestion}
+                disabled={busy || sessionId === null}
+              />
+              <SuggestionChips
+                group={vibeSuggestions}
+                onSelect={sendSuggestion}
+                disabled={busy || sessionId === null}
+              />
+            </div>
           </div>
 
           {error && (
-            <p className="system-error" role="alert">
+            <p className="system-error chat-error" role="alert">
               {error}
             </p>
           )}
           {sessionId === null && error && (
-            <div className="system-actions">
+            <div className="system-actions chat-retry">
               <button
                 className="button button-outline"
                 type="button"
@@ -397,54 +509,89 @@ export function ChatPage() {
             </div>
           )}
 
-          <form className="system-form chat-form" onSubmit={send}>
-            <label htmlFor={inputId}>
+          <form className="chat-input-bar" onSubmit={send}>
+            <label htmlFor={inputId} className="visually-hidden">
               Message
-              <input
-                id={inputId}
-                value={text}
-                onChange={(event) => setText(event.target.value)}
-                placeholder="Your travel request"
-                autoComplete="off"
-                disabled={busy || sessionId === null}
-              />
             </label>
             <button
-              className="button button-primary"
-              type="submit"
-              disabled={busy || sessionId === null || text.trim() === ''}
+              type="button"
+              className="chat-input-attach"
+              aria-label="Add an attachment"
+              title="Add an attachment"
             >
-              <Send size={15} /> {pending?.text != null ? 'Sending…' : 'Send'}
+              <Plus size={18} />
+            </button>
+            <input
+              id={inputId}
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              placeholder='Ask anything or type "/" to see options'
+              autoComplete="off"
+              disabled={busy || sessionId === null}
+            />
+            <button
+              type="submit"
+              className="chat-input-send"
+              disabled={busy || sessionId === null || text.trim() === ''}
+              aria-label={pending !== null ? 'Sending…' : 'Send'}
+            >
+              {pending !== null ? (
+                <Check size={18} />
+              ) : (
+                <ArrowUp size={18} />
+              )}
             </button>
           </form>
         </section>
 
-        <TripForm
-          state={trip.state}
-          missingFields={trip.missingFields}
-          draft={draft}
-          base={base}
-          errors={fieldErrors}
-          error={formError}
-          places={places}
-          placesUnavailable={placesUnavailable}
-          disabled={sessionId === null}
-          busy={busy}
-          applying={pending !== null && pending.text === null}
-          onEdit={edit}
-          onApply={apply}
-          onDiscard={discard}
+        {/* ─── CENTER: Itinerary panel ─── */}
+        <ItineraryPanel
+          itinerary={itinerary}
+          activeStepId={activeStepId}
+          onStepHover={handleStepHover}
+          onStepClick={handleStepClick}
+          onToggleSaved={handleToggleSaved}
+        />
+
+        {/* ─── RIGHT: Map panel ─── */}
+        <MapPanel
+          itinerary={itinerary}
+          activeStepId={activeStepId}
+          onStepHover={handleStepHover}
+          onStepClick={handleStepClick}
+          saved={tripSaved}
+          onSaveTrip={handleSaveTrip}
         />
       </div>
     </div>
   );
 }
 
-function Message({ message }: { message: ChatMessage }) {
+function SuggestionChips({
+  group,
+  onSelect,
+  disabled,
+}: {
+  group: SuggestionGroup;
+  onSelect: (text: string) => void;
+  disabled: boolean;
+}) {
   return (
-    <>
-      <p className={`chat-bubble chat-${message.role}`}>{message.content}</p>
-      {message.result && <Results result={message.result} />}
-    </>
+    <div className="chat-chip-group">
+      <p className="chat-chip-question">{group.question}</p>
+      <div className="chat-chip-row">
+        {group.options.map((option) => (
+          <button
+            key={option}
+            type="button"
+            className="chat-chip"
+            onClick={() => onSelect(option)}
+            disabled={disabled}
+          >
+            <Plus size={13} /> {option}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

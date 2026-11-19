@@ -56,26 +56,38 @@ describe('planning chat', () => {
     expect(input.value).toBe('');
   });
 
-  it('applies a trip edit, updates progress and restores the saved conversation', async () => {
-    const { user, send, view } = await openChat();
+  it('restores the saved conversation next to the itinerary workspace', async () => {
+    const { send, view } = await openChat();
     await send('I want to travel');
     await screen.findByText('Still needed: origin.');
 
-    const from = screen.getByLabelText<HTMLInputElement>('From');
-    await user.type(from, 'Berlin');
-    await user.click(screen.getByRole('button', { name: 'Apply changes' }));
-    await screen.findByText('Still needed: destination.');
-    expect(screen.getByRole('progressbar', { name: 'Required trip details' })
-      .getAttribute('aria-valuenow')).toBe('1');
-    expect(from.value).toBe('Berlin');
-
     view.unmount();
     render(<ChatPage />);
-    await screen.findByText('Still needed: destination.');
-    expect(screen.getByLabelText<HTMLInputElement>('From').value).toBe('Berlin');
+    await screen.findByText('Still needed: origin.');
     const messages = within(screen.getByRole('log'));
     expect(messages.getByText('I want to travel')).toBeTruthy();
     expect(messages.getByText('Still needed: origin.')).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: /Results for/ }),
+    ).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Trip map' })).toBeTruthy();
+  });
+
+  it('saves the trip and reveals the dates and travellers summary', async () => {
+    const { user } = await openChat();
+    await user.click(
+      screen.getByRole('button', { name: 'Save this itinerary to a trip' }),
+    );
+    expect(
+      screen.getByRole('button', { name: /Saved to your trip/ }),
+    ).toBeTruthy();
+
+    await user.click(
+      screen.getByRole('button', { name: /Dates & travelers/ }),
+    );
+    expect(screen.getByText('Route')).toBeTruthy();
+    expect(screen.getByText('Dates')).toBeTruthy();
+    expect(screen.getByText('Travelers')).toBeTruthy();
   });
 
   it('shows a structured journey after the inferred destination is confirmed', async () => {
