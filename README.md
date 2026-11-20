@@ -36,5 +36,6 @@ Die Statusseite prüft Backend und Datenbank, legt Planungssitzungen an, lädt s
 | [Neuen Endpunkt ergänzen](docs/EXTENDING.md) | Schritt für Schritt von Modell bis Frontend |
 | [Definition of Done](docs/DEFINITION_OF_DONE.md) | gemeinsame Kriterien für jedes Ticket, Doku im selben Pull Request |
 | [Journey Planner: Schnittstelle zu den Domain Services (DS1)](journey-planner/docs/DS1_CONTRACT.md) | einheitlicher Vertrag `search_journeys` für Flug, Bahn und Taxi/Ride-Hailing, Request/Response, Status- und Fehlerfälle, Mocks, OpenAPI |
+| [Domain Services (DS2)](domain-services/README.md) | eigenständige Transportservices ([Train](domain-services/train-service/README.md), [Flight](domain-services/flight-service/README.md)) mit austauschbaren Provider-Adaptern und Mock-Daten |
 | [Backend](backend/README.md) | Aufbau des Backends und häufige Befehle |
 | [TravelPlanner-Daten](backend/reference_data/data/travelplanner/README.md) | Herkunft, Version, Lizenz und Format der Referenzdaten |
