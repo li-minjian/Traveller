@@ -14,6 +14,7 @@ import { ApiError, backend } from '../api/client';
 import type {
   ChatMessage,
   ChatTurn,
+  TripFieldsInput,
   TripState,
   TripStateResponse,
 } from '../api/client';
@@ -29,6 +30,11 @@ import { emptyTripState, requiredFields } from './chat/tripDraft';
  *   Left   – chat with the planning agent
  *   Center – itinerary steps by day
  *   Right  – interactive map with georeferenced markers
+ *
+ * The session, message history and trip state come from the same `/api/v1`
+ * endpoints the status page uses. The chat itself is text-only here; the
+ * compact dates/travellers form sends structured `fields` through the message
+ * endpoint once the user changes something.
  */
 
 const chatSessionKey = 'traveller.chatSessionId';
@@ -114,17 +120,32 @@ function describeError(error: unknown) {
   return details ? `${error.message} ${details}` : error.message;
 }
 
-/** "2027-05-20 – 2027-05-24", or a note that the agent still needs dates. */
-function formatWindow(value: TripState['departure']['value']) {
-  if (!value) return 'Not set yet';
-  return value.earliest === value.latest
-    ? value.earliest
-    : `${value.earliest} – ${value.latest}`;
-}
-
 type Start = { fresh: boolean };
-/** The running request. */
+/** The running chat request. */
 type Pending = { text: string };
+
+type DetailsForm = {
+  departure: string;
+  return: string;
+  travelers: string;
+  oneWay: boolean;
+};
+
+const emptyDetails: DetailsForm = {
+  departure: '',
+  return: '',
+  travelers: '',
+  oneWay: false,
+};
+
+function detailsFromState(state: TripState): DetailsForm {
+  return {
+    departure: state.departure.value?.earliest ?? '',
+    return: state.return.value?.earliest ?? '',
+    travelers: state.travelers.value?.toString() ?? '',
+    oneWay: state.trip_type.value === 'one_way',
+  };
+}
 
 /** Suggestion chips shown in the chat. */
 type SuggestionGroup = {
@@ -176,6 +197,9 @@ export function ChatPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [datesOpen, setDatesOpen] = useState(false);
   const [tripSaved, setTripSaved] = useState(false);
+  const [details, setDetails] = useState<DetailsForm>(emptyDetails);
+  const [detailsBusy, setDetailsBusy] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
 
   // Open the conversation: reuse the remembered session or create a new one.
   useEffect(() => {
@@ -230,19 +254,27 @@ export function ChatPage() {
     if (element) element.scrollTop = element.scrollHeight;
   }, [messages, pending, error]);
 
+  // The compact details form mirrors the server-side trip state.
+  useEffect(() => {
+    setDetails(detailsFromState(trip.state));
+  }, [trip.state]);
+
   function restart(fresh: boolean) {
     setSessionId(null);
     setError(null);
+    setDetailsError(null);
+    setDatesOpen(false);
     if (fresh) {
       setMessages([]);
       setTrip(emptyTrip);
       setSelectedStepId(demoItinerary.days[0]?.steps[0]?.id ?? null);
       setTripSaved(false);
+      setDetails(emptyDetails);
     }
     setStart({ fresh });
   }
 
-  /** Shows the reply and syncs the trip state used by the dates summary. */
+  /** Shows the reply and syncs the trip state used by the details form. */
   function adopt(turn: ChatTurn) {
     setMessages((current) => [
       ...current,
@@ -268,6 +300,50 @@ export function ChatPage() {
     }
   }
 
+  /**
+   * Sends only the changed dates/travellers as structured fields through the
+   * same message endpoint. The agent then answers and updates the trip state.
+   */
+  async function submitDetails(event: FormEvent) {
+    event.preventDefault();
+    if (!sessionId || detailsBusy) return;
+
+    const current = detailsFromState(trip.state);
+    const fields: TripFieldsInput = {};
+    if (details.departure !== current.departure)
+      fields.departure = details.departure || null;
+
+    if (details.oneWay !== current.oneWay)
+      fields.trip_type = details.oneWay ? 'one_way' : 'round_trip';
+
+    if (details.oneWay) {
+      if (current.return) fields.return = null;
+    } else if (details.return !== current.return) {
+      fields.return = details.return || null;
+    }
+
+    if (details.travelers !== current.travelers)
+      fields.travelers = details.travelers.trim()
+        ? Number(details.travelers)
+        : null;
+
+    if (Object.keys(fields).length === 0) {
+      setDatesOpen(false);
+      return;
+    }
+
+    setDetailsBusy(true);
+    setDetailsError(null);
+    try {
+      adopt(await backend.sendMessage(sessionId, { fields }));
+      setDatesOpen(false);
+    } catch (reason) {
+      setDetailsError(describeError(reason));
+    } finally {
+      setDetailsBusy(false);
+    }
+  }
+
   function send(event: FormEvent) {
     event.preventDefault();
     const message = text.trim();
@@ -285,9 +361,7 @@ export function ChatPage() {
   const handleStepClick = useCallback((id: string) => {
     setSelectedStepId(id);
     setHoveredStepId(null);
-    const card = document.querySelector<HTMLElement>(
-      `[data-step-id="${id}"]`,
-    );
+    const card = document.querySelector<HTMLElement>(`[data-step-id="${id}"]`);
     card?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
   }, []);
 
@@ -324,18 +398,21 @@ export function ChatPage() {
   }
 
   const opening = sessionId === null && error === null;
-  const busy = pending !== null;
+  const busy = pending !== null || detailsBusy;
   const activeStepId = hoveredStepId ?? selectedStepId;
 
   return (
-    <div className="chat-page-new">
-      <div className="chat-three-panel">
-        {/* ─── LEFT: Chat panel ─── */}
-        <section className="chat-panel" aria-labelledby="chat-heading">
-          <div className="chat-panel-header">
+    <div className="h-dvh w-full overflow-hidden bg-surface font-sans text-ink max-[1000px]:h-auto max-[1000px]:min-h-dvh max-[1000px]:overflow-visible">
+      <div className="grid h-full min-h-0 grid-cols-[20vw_min(40vw,1024px)_minmax(0,1fr)] max-[1920px]:grid-cols-[20vw_min(40vw,768px)_minmax(0,1fr)] max-[1000px]:flex max-[1000px]:h-auto max-[1000px]:min-h-dvh max-[1000px]:flex-col">
+        {/* ─── LEFT: chat panel ─── */}
+        <section
+          className="relative flex h-full min-h-0 min-w-0 flex-col border-r border-line bg-surface max-[1000px]:h-[84dvh] max-[1000px]:min-h-[540px] max-[1000px]:border-b max-[1000px]:border-r-0"
+          aria-labelledby="chat-heading"
+        >
+          <div className="relative flex min-h-[58px] items-center gap-2 border-b border-line px-3.5 py-3">
             <button
               type="button"
-              className="chat-icon-btn chat-menu-btn"
+              className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-lg text-[#1b2f2a] hover:bg-mist"
               aria-label="Open menu"
               aria-expanded={menuOpen}
               onClick={() => {
@@ -346,23 +423,27 @@ export function ChatPage() {
               <Menu size={20} />
             </button>
 
-            <h2 id="chat-heading" className="chat-panel-title">
+            <h2
+              id="chat-heading"
+              className="min-w-0 flex-1 truncate font-sans text-base font-bold leading-tight tracking-[-0.015em] text-forest-deep"
+            >
               AI Assistant
             </h2>
 
-            <div className="chat-header-actions">
+            <div className="flex items-center gap-0.5">
               <button
                 type="button"
-                className="chat-new-btn"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-1.5 py-1.5 text-[0.8rem] font-semibold whitespace-nowrap text-forest-deep hover:bg-mist disabled:opacity-50 max-[1400px]:w-[34px] max-[1400px]:justify-center max-[1400px]:p-1.5"
                 onClick={() => restart(true)}
                 disabled={busy || opening}
                 aria-label="New chat"
               >
-                <Plus size={15} /> <span className="chat-new-label">New chat</span>
+                <Plus size={15} />
+                <span className="max-[1400px]:hidden">New chat</span>
               </button>
               <button
                 type="button"
-                className="chat-icon-btn"
+                className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-lg text-[#1b2f2a] hover:bg-mist"
                 onClick={() => void share()}
                 aria-label="Share this itinerary"
                 title="Share this itinerary"
@@ -372,10 +453,15 @@ export function ChatPage() {
             </div>
 
             {menuOpen && (
-              <div className="chat-menu" role="menu" aria-label="Main menu">
+              <div
+                className="absolute top-[52px] left-3 z-30 grid min-w-[178px] gap-0 rounded-[10px] border border-line bg-surface p-1.5 shadow-xl"
+                role="menu"
+                aria-label="Main menu"
+              >
                 <a
                   href="/"
                   role="menuitem"
+                  className="rounded-md px-2.5 py-2 text-[0.8rem] font-semibold text-forest-deep hover:bg-forest-soft"
                   onClick={() => setMenuOpen(false)}
                 >
                   Traveller home
@@ -383,6 +469,7 @@ export function ChatPage() {
                 <a
                   href="/status"
                   role="menuitem"
+                  className="rounded-md px-2.5 py-2 text-[0.8rem] font-semibold text-forest-deep hover:bg-forest-soft"
                   onClick={() => setMenuOpen(false)}
                 >
                   System status
@@ -393,92 +480,204 @@ export function ChatPage() {
 
           <button
             type="button"
-            className="chat-dates-toggle"
+            className="flex min-h-[46px] w-full shrink-0 items-center gap-2 border-b border-line bg-surface px-4 py-2.5 text-left text-[0.78rem] font-semibold text-forest-deep hover:bg-[#f7f8f5]"
             aria-expanded={datesOpen}
             onClick={() => {
               setDatesOpen((open) => !open);
               setMenuOpen(false);
+              setDetailsError(null);
             }}
           >
             <CalendarDays size={15} />
             <span>Dates &amp; travelers</span>
             <ChevronDown
               size={15}
-              className={`chat-chevron${datesOpen ? ' is-open' : ''}`}
+              className={`ml-0.5 transition-transform ${datesOpen ? 'rotate-180' : ''}`}
             />
           </button>
 
           {datesOpen && (
-            <div className="chat-dates-panel">
-              <div>
-                <span>Route</span>
-                <strong>
-                  {trip.state.origin.value ?? 'Not set'} →{' '}
-                  {trip.state.destination.value ?? 'Not set'}
-                </strong>
+            <form
+              className="grid shrink-0 gap-2 border-b border-line bg-[#fafbf8] px-4 pt-2.5 pb-3 text-[0.74rem]"
+              onSubmit={submitDetails}
+            >
+              <div className="grid gap-1">
+                <label
+                  htmlFor="chat-departure"
+                  className="font-semibold text-[#64736d]"
+                >
+                  Departure
+                </label>
+                <input
+                  id="chat-departure"
+                  type="date"
+                  value={details.departure}
+                  onChange={(event) =>
+                    setDetails((current) => ({
+                      ...current,
+                      departure: event.target.value,
+                    }))
+                  }
+                  disabled={detailsBusy}
+                  className="min-h-8 min-w-0 rounded-md border border-line bg-white px-2 py-1 text-[0.76rem] text-forest-deep outline-none focus:border-forest"
+                />
               </div>
-              <div>
-                <span>Dates</span>
-                <strong>{formatWindow(trip.state.departure.value)}</strong>
+              <div className="grid gap-1">
+                <label
+                  htmlFor="chat-return"
+                  className="font-semibold text-[#64736d]"
+                >
+                  Return
+                </label>
+                <input
+                  id="chat-return"
+                  type="date"
+                  value={details.return}
+                  onChange={(event) =>
+                    setDetails((current) => ({
+                      ...current,
+                      return: event.target.value,
+                    }))
+                  }
+                  disabled={detailsBusy || details.oneWay}
+                  className="min-h-8 min-w-0 rounded-md border border-line bg-white px-2 py-1 text-[0.76rem] text-forest-deep outline-none focus:border-forest disabled:bg-mist disabled:opacity-60"
+                />
               </div>
-              <div>
-                <span>Travelers</span>
-                <strong>{trip.state.travelers.value ?? 'Not set'}</strong>
+              <div className="flex items-end gap-2">
+                <div className="grid flex-1 gap-1">
+                  <label
+                    htmlFor="chat-travelers"
+                    className="font-semibold text-[#64736d]"
+                  >
+                    Travelers
+                  </label>
+                  <input
+                    id="chat-travelers"
+                    type="number"
+                    min={1}
+                    inputMode="numeric"
+                    value={details.travelers}
+                    onChange={(event) =>
+                      setDetails((current) => ({
+                        ...current,
+                        travelers: event.target.value,
+                      }))
+                    }
+                    disabled={detailsBusy}
+                    className="min-h-8 min-w-0 rounded-md border border-line bg-white px-2 py-1 text-[0.76rem] text-forest-deep outline-none focus:border-forest"
+                  />
+                </div>
+                <label className="flex min-h-8 items-center gap-1.5 pb-1 font-medium text-[#1d3a34]">
+                  <input
+                    type="checkbox"
+                    checked={details.oneWay}
+                    onChange={(event) =>
+                      setDetails((current) => ({
+                        ...current,
+                        oneWay: event.target.checked,
+                      }))
+                    }
+                    disabled={detailsBusy}
+                    className="size-3.5 accent-forest"
+                  />
+                  One-way
+                </label>
               </div>
-            </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="submit"
+                  disabled={detailsBusy || sessionId === null}
+                  className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-forest px-3.5 py-1.5 text-[0.74rem] font-semibold text-white hover:bg-[#15543e] disabled:opacity-50"
+                >
+                  {detailsBusy ? (
+                    <>
+                      <RefreshCw size={13} className="animate-spin" /> Updating…
+                    </>
+                  ) : (
+                    <>
+                      <Check size={13} /> Update trip
+                    </>
+                  )}
+                </button>
+                {detailsError && (
+                  <p
+                    className="min-w-0 text-[0.7rem] leading-snug text-[#7a2e1c]"
+                    role="alert"
+                  >
+                    {detailsError}
+                  </p>
+                )}
+              </div>
+            </form>
           )}
 
-          <div className="chat-messages" ref={list} tabIndex={0}>
+          <div
+            className="min-h-0 flex-1 overflow-y-auto bg-surface [scrollbar-width:thin]"
+            ref={list}
+            tabIndex={0}
+          >
             <div
-              className="chat-thread"
+              className="flex flex-col gap-3.5 px-4 pt-[18px] pb-3.5"
               role="log"
               aria-live="polite"
               aria-label="Messages"
             >
               {opening && (
-                <p className="system-meta">Opening conversation…</p>
+                <p className="text-[0.78rem] text-muted">
+                  Opening conversation…
+                </p>
               )}
 
               {messages.length === 0 && !opening && (
-                <div className="chat-turn chat-briefing">
-                  <p className="chat-day-label">
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <p className="mb-0.5 font-sans text-[0.86rem] font-bold leading-tight text-forest-deep">
                     Day {demoDay?.dayNumber ?? 1}
                   </p>
-                  <p className="chat-bubble chat-assistant">{demoSummary}</p>
+                  <p className="max-w-full text-[0.9rem] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-[#172f2b]">
+                    {demoSummary}
+                  </p>
                 </div>
               )}
 
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`chat-turn${
-                    message.role === 'user' ? ' chat-turn-user' : ''
+                  className={`flex min-w-0 flex-col gap-1.5 ${
+                    message.role === 'user' ? 'items-end' : ''
                   }`}
                 >
                   {message.role === 'assistant' ? (
                     <>
-                      <p className="chat-bubble chat-assistant">
+                      <p className="max-w-full text-[0.9rem] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-[#172f2b]">
                         {message.content}
                       </p>
                       {message.result && <Results result={message.result} />}
                     </>
                   ) : (
-                    <p className="chat-bubble chat-user">{message.content}</p>
+                    <p className="max-w-[90%] self-end rounded-[14px_14px_4px_14px] bg-forest px-3 py-2 text-[0.82rem] leading-snug text-white">
+                      {message.content}
+                    </p>
                   )}
                 </div>
               ))}
 
               {pending !== null && (
-                <div className="chat-turn">
-                  <p className="chat-bubble chat-user">{pending.text}</p>
-                  <p className="chat-bubble chat-assistant chat-thinking">
+                <div className="flex flex-col gap-1.5">
+                  <p className="max-w-[90%] self-end rounded-[14px_14px_4px_14px] bg-forest px-3 py-2 text-[0.82rem] leading-snug text-white">
+                    {pending.text}
+                  </p>
+                  <p className="text-[0.9rem] italic text-[#6c7a74]">
                     thinking…
                   </p>
                 </div>
               )}
             </div>
 
-            <div className="chat-suggestions" aria-label="Suggested replies">
+            <div
+              className="flex flex-col gap-3.5 border-t border-line bg-surface px-4 pt-3.5 pb-[18px]"
+              aria-label="Suggested replies"
+            >
               <SuggestionChips
                 group={durationSuggestions}
                 onSelect={sendSuggestion}
@@ -493,14 +692,17 @@ export function ChatPage() {
           </div>
 
           {error && (
-            <p className="system-error chat-error" role="alert">
+            <p
+              className="mx-3 mb-2 shrink-0 rounded-lg border border-[#e1baab] bg-[#fdf4f1] px-3 py-2.5 text-[0.82rem] text-[#7a2e1c]"
+              role="alert"
+            >
               {error}
             </p>
           )}
           {sessionId === null && error && (
-            <div className="system-actions chat-retry">
+            <div className="mx-4 mb-2 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2">
               <button
-                className="button button-outline"
+                className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-md border border-[#c9d1d1] bg-surface px-3.5 py-2.5 text-[0.79rem] font-bold text-ink hover:border-teal hover:bg-tint"
                 type="button"
                 onClick={() => restart(false)}
               >
@@ -509,13 +711,16 @@ export function ChatPage() {
             </div>
           )}
 
-          <form className="chat-input-bar" onSubmit={send}>
-            <label htmlFor={inputId} className="visually-hidden">
+          <form
+            className="mx-3.5 mt-2 mb-3.5 flex shrink-0 items-center gap-1.5 rounded-2xl border-[1.5px] border-[#1e6b49] bg-white p-2 transition focus-within:border-forest focus-within:ring-2 focus-within:ring-forest/10"
+            onSubmit={send}
+          >
+            <label htmlFor={inputId} className="sr-only">
               Message
             </label>
             <button
               type="button"
-              className="chat-input-attach"
+              className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full bg-forest text-white hover:bg-[#15543e]"
               aria-label="Add an attachment"
               title="Add an attachment"
             >
@@ -528,10 +733,11 @@ export function ChatPage() {
               placeholder='Ask anything or type "/" to see options'
               autoComplete="off"
               disabled={busy || sessionId === null}
+              className="h-[34px] min-w-0 flex-1 border-0 bg-transparent px-0.5 text-[0.8rem] text-forest-deep outline-none placeholder:text-[#7a8781] disabled:opacity-60"
             />
             <button
               type="submit"
-              className="chat-input-send"
+              className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full bg-[#c8cdc7] text-white disabled:opacity-100 enabled:bg-forest enabled:hover:bg-[#15543e]"
               disabled={busy || sessionId === null || text.trim() === ''}
               aria-label={pending !== null ? 'Sending…' : 'Send'}
             >
@@ -544,7 +750,7 @@ export function ChatPage() {
           </form>
         </section>
 
-        {/* ─── CENTER: Itinerary panel ─── */}
+        {/* ─── CENTER: itinerary panel ─── */}
         <ItineraryPanel
           itinerary={itinerary}
           activeStepId={activeStepId}
@@ -553,7 +759,7 @@ export function ChatPage() {
           onToggleSaved={handleToggleSaved}
         />
 
-        {/* ─── RIGHT: Map panel ─── */}
+        {/* ─── RIGHT: map panel ─── */}
         <MapPanel
           itinerary={itinerary}
           activeStepId={activeStepId}
@@ -577,14 +783,16 @@ function SuggestionChips({
   disabled: boolean;
 }) {
   return (
-    <div className="chat-chip-group">
-      <p className="chat-chip-question">{group.question}</p>
-      <div className="chat-chip-row">
+    <div className="flex flex-col gap-1.5">
+      <p className="m-0 font-sans text-[0.82rem] font-bold leading-snug text-forest-deep">
+        {group.question}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
         {group.options.map((option) => (
           <button
             key={option}
             type="button"
-            className="chat-chip"
+            className="inline-flex min-h-[34px] items-center gap-1 whitespace-nowrap rounded-full border border-[#b9c6bd] bg-white px-3 py-1.5 text-[0.79rem] font-medium text-[#173b31] transition hover:border-[#1d6a49] hover:bg-forest-soft disabled:opacity-50"
             onClick={() => onSelect(option)}
             disabled={disabled}
           >

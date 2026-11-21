@@ -44,7 +44,11 @@ function Layout() {
       )}
       <main
         id="main-content"
-        className={immersive ? 'main-immersive' : undefined}
+        className={
+          immersive
+            ? 'h-dvh overflow-hidden max-[1000px]:h-auto max-[1000px]:overflow-visible'
+            : undefined
+        }
         tabIndex={-1}
         ref={main}
       >

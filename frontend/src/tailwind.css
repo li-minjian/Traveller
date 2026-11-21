@@ -1,0 +1,104 @@
+@layer theme, base, components, legacy, utilities;
+
+@import "tailwindcss";
+
+/*
+ * The untouched status page still uses the original stylesheet. Loading it in
+ * a lower-priority layer keeps that page unchanged while letting every /chat
+ * utility win over its element rules.
+ */
+@import "./styles.css" layer(legacy);
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans Variable', 'Segoe UI', sans-serif;
+  --font-display: 'EB Garamond Variable', Georgia, serif;
+
+  --color-ink: #071e24;
+  --color-teal: #245865;
+  --color-muted: #546265;
+  --color-canvas: #faf9f9;
+  --color-surface: #ffffff;
+  --color-mist: #f1f1ef;
+  --color-line: #dedfdb;
+  --color-tint: #edf5f5;
+  --color-forest: #0d3b2c;
+  --color-forest-deep: #071e24;
+  --color-forest-soft: #f2f8f3;
+  --color-forest-line: #b9cbbf;
+}
+
+/*
+ * Leaflet builds its controls, tooltips and marker wrappers itself, so those
+ * few third-party selectors cannot be expressed as JSX utility classes.
+ * Everything Traveller renders in the /chat workspace uses utilities above.
+ */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #eef0e8;
+  font-family: var(--font-sans);
+}
+
+.leaflet-container:focus-visible {
+  outline: 2px solid #347c89;
+  outline-offset: -2px;
+}
+
+.leaflet-div-icon {
+  border: 0;
+  background: transparent;
+}
+
+.leaflet-control-zoom {
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 5px rgb(0 0 0 / 0.18) !important;
+}
+
+.leaflet-control-zoom a {
+  width: 32px !important;
+  height: 32px !important;
+  border-color: var(--color-line) !important;
+  background: #fff !important;
+  color: var(--color-forest-deep) !important;
+  line-height: 32px !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: var(--color-forest-soft) !important;
+}
+
+.leaflet-control-attribution {
+  padding: 2px 6px !important;
+  background: rgb(255 255 255 / 0.82) !important;
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: 9px !important;
+}
+
+.leaflet-control-attribution a {
+  color: var(--color-forest);
+}
+
+.leaflet-tooltip.map-tooltip {
+  padding: 5px 9px;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--color-forest-deep);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.14);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.leaflet-tooltip.map-tooltip::before {
+  border-right-color: #fff;
+}
+
+/* Soften the key-free OSM tiles toward the pale reference map. */
+.map-soft-tiles .leaflet-tile-pane {
+  filter: sepia(0.1) saturate(0.62) contrast(0.94) brightness(1.06);
+}

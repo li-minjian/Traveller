@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, loadEnv } from 'vite';
 import type { Plugin } from 'vite';
 
@@ -42,7 +43,10 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     oxc: { jsx: { runtime: 'automatic' } },
-    plugins: demoMode || localMockMode ? [mockWorkerPlugin()] : [],
+    plugins: [
+      ...(demoMode || localMockMode ? [mockWorkerPlugin()] : []),
+      tailwindcss(),
+    ],
     server: {
       proxy: apiProxy,
       // WATCH_POLLING=true helps where file events don't reach the container.

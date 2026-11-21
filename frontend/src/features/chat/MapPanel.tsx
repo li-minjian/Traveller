@@ -20,12 +20,17 @@ const TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
+const pinBase =
+  'flex items-center justify-center rounded-full border-white font-bold leading-none text-white shadow-md transition-transform duration-150 hover:scale-110 hover:bg-forest-deep';
+const pinNormal = `${pinBase} h-8 w-8 border-2 bg-forest text-[11px]`;
+const pinActive = `${pinBase} h-11 w-11 border-[3px] bg-forest-deep text-sm`;
+
 /** A numbered, circular map pin. Leaflet keeps it anchored to lat/lng. */
 function pinIcon(index: number, active: boolean): L.DivIcon {
-  const size = active ? 46 : 32;
+  const size = active ? 44 : 32;
   return L.divIcon({
-    className: `map-pin${active ? ' is-active' : ''}`,
-    html: `<span>${index}</span>`,
+    className: 'map-pin',
+    html: `<span class="${active ? pinActive : pinNormal}">${index}</span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -size / 2],
@@ -164,7 +169,7 @@ export function MapPanel({
           permanent: true,
           direction: 'right',
           className: 'map-tooltip',
-          offset: [active ? 26 : 18, 0],
+          offset: [active ? 24 : 18, 0],
         });
         marker.openTooltip();
       } else {
@@ -184,11 +189,19 @@ export function MapPanel({
   }, [expanded]);
 
   return (
-    <aside className={`map-panel${expanded ? ' is-expanded' : ''}`}>
-      <div className="map-panel-header">
+    <aside
+      className={`flex min-h-0 min-w-0 flex-col overflow-hidden bg-surface max-[1000px]:h-[70dvh] max-[1000px]:min-h-[460px] ${
+        expanded ? 'fixed inset-0 z-[60] h-dvh' : 'h-full'
+      }`}
+    >
+      <div className="flex min-h-[118px] shrink-0 items-start px-6 pt-[58px] pb-5">
         <button
           type="button"
-          className={`itin-save-trip${saved ? ' is-saved' : ''}`}
+          className={`inline-flex min-h-[38px] items-center gap-1.5 rounded-full border bg-white px-4.5 py-2 text-[0.78rem] font-semibold whitespace-nowrap text-forest-deep hover:border-[#2b7050] hover:bg-forest-soft ${
+            saved
+              ? 'border-forest bg-forest-soft'
+              : 'border-[#b3c1b8]'
+          }`}
           onClick={onSaveTrip}
         >
           {saved ? (
@@ -201,21 +214,21 @@ export function MapPanel({
         </button>
       </div>
 
-      <div className="map-stage">
+      <div className="relative min-h-0 flex-1 bg-[#eef0e8]">
         <div
-          className="map-canvas"
+          className="map-soft-tiles absolute inset-0 h-full w-full bg-[#eef0e8]"
           ref={containerRef}
           role="region"
           aria-label="Trip map"
         />
         {steps.length === 0 && (
-          <p className="map-empty">
+          <p className="absolute inset-0 grid place-items-center p-6 text-center text-[0.84rem] text-[#6a7872]">
             Locations will appear on the map as the itinerary is built.
           </p>
         )}
         <button
           type="button"
-          className="map-expand"
+          className="absolute top-3.5 left-3.5 z-30 grid h-[38px] w-[38px] place-items-center rounded-lg bg-white text-forest-deep shadow-md hover:bg-[#f5f7f3]"
           onClick={() => setExpanded((value) => !value)}
           aria-label={expanded ? 'Exit full-screen map' : 'Expand map'}
           title={expanded ? 'Exit full-screen map' : 'Expand map'}

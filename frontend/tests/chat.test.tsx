@@ -73,7 +73,7 @@ describe('planning chat', () => {
     expect(screen.getByRole('region', { name: 'Trip map' })).toBeTruthy();
   });
 
-  it('saves the trip and reveals the dates and travellers summary', async () => {
+  it('saves the trip and updates travelers through the API', async () => {
     const { user } = await openChat();
     await user.click(
       screen.getByRole('button', { name: 'Save this itinerary to a trip' }),
@@ -85,9 +85,21 @@ describe('planning chat', () => {
     await user.click(
       screen.getByRole('button', { name: /Dates & travelers/ }),
     );
-    expect(screen.getByText('Route')).toBeTruthy();
-    expect(screen.getByText('Dates')).toBeTruthy();
-    expect(screen.getByText('Travelers')).toBeTruthy();
+    expect(screen.getByLabelText('Departure')).toBeTruthy();
+    expect(screen.getByLabelText('Return')).toBeTruthy();
+    const travelers = screen.getByLabelText<HTMLInputElement>('Travelers');
+
+    await user.clear(travelers);
+    await user.type(travelers, '2');
+    await user.click(screen.getByRole('button', { name: /Update trip/ }));
+    await screen.findByText('Still needed: origin.');
+
+    // The form closed after the API accepted the structured fields. Reopening
+    // shows the trip state returned by the backend.
+    await user.click(
+      screen.getByRole('button', { name: /Dates & travelers/ }),
+    );
+    expect(screen.getByLabelText<HTMLInputElement>('Travelers').value).toBe('2');
   });
 
   it('shows a structured journey after the inferred destination is confirmed', async () => {
