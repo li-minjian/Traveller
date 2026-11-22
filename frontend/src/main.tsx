@@ -7,7 +7,7 @@ import '@fontsource-variable/eb-garamond/wght.css';
 import '@fontsource-variable/eb-garamond/wght-italic.css';
 import '@fontsource-variable/plus-jakarta-sans/wght.css';
 import { router } from './app/App';
-import './styles.css';
+import './tailwind.css';
 
 // The public demo is opt-in. A normal production build always uses Django.
 // Local `dev:mock` continues to work without a production demo flag.

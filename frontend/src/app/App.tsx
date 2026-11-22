@@ -16,6 +16,7 @@ function Layout() {
   const { pathname } = useLocation();
   const main = useRef<HTMLElement>(null);
   const lastPath = useRef(pathname);
+  const immersive = pathname === '/chat' || pathname.startsWith('/chat/');
   useLayoutEffect(() => {
     if (lastPath.current !== pathname)
       main.current?.focus({ preventScroll: true });
@@ -27,29 +28,42 @@ function Layout() {
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
-      <header className="site-header">
-        <div className="nav-wrap">
-          <Link to="/" className="brand" aria-label="Traveller home">
-            <Compass size={21} />
-            Traveller
-          </Link>
-          <nav className="site-nav" aria-label="Main">
-            <NavLink to="/chat">Chat</NavLink>
-            <NavLink to="/status">Status</NavLink>
-          </nav>
-        </div>
-      </header>
-      <main id="main-content" tabIndex={-1} ref={main}>
+      {!immersive && (
+        <header className="site-header">
+          <div className="nav-wrap">
+            <Link to="/" className="brand" aria-label="Traveller home">
+              <Compass size={21} />
+              Traveller
+            </Link>
+            <nav className="site-nav" aria-label="Main">
+              <NavLink to="/chat">Chat</NavLink>
+              <NavLink to="/status">Status</NavLink>
+            </nav>
+          </div>
+        </header>
+      )}
+      <main
+        id="main-content"
+        className={
+          immersive
+            ? 'h-dvh overflow-hidden max-[1000px]:h-auto max-[1000px]:overflow-visible'
+            : undefined
+        }
+        tabIndex={-1}
+        ref={main}
+      >
         <Outlet />
       </main>
-      <footer className="site-footer">
-        <div className="page">
-          <p>A travel-planning prototype · Project VS, TU Berlin</p>
-          <span>
-            <Link to="/status">System status</Link>
-          </span>
-        </div>
-      </footer>
+      {!immersive && (
+        <footer className="site-footer">
+          <div className="page">
+            <p>A travel-planning prototype · Project VS, TU Berlin</p>
+            <span>
+              <Link to="/status">System status</Link>
+            </span>
+          </div>
+        </footer>
+      )}
       <ScrollRestoration getKey={(location) => location.pathname} />
     </>
   );
