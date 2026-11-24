@@ -37,7 +37,7 @@ gcloud run jobs deploy traveller-migrate "${target[@]}" \
   --command=python --args=manage.py,migrate,--noinput \
   --cpu=1 --memory=512Mi --tasks=1 --max-retries=0 --task-timeout=300s \
   --set-env-vars="$db_env,POSTGRES_HOST=$MIGRATION_DB_HOST,DJANGO_DEBUG=false" \
-  --set-secrets="$backend_secrets" --update-labels="$labels" --execute-now --wait
+  --set-secrets="$backend_secrets" --labels="$labels" --execute-now --wait
 
 gcloud run deploy traveller-journey-planner "${target[@]}" "${service_limits[@]}" "$startup_probe" \
   --image="$planner_image" --service-account="$planner_sa" --timeout=30s \

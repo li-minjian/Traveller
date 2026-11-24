@@ -1,3 +1,5 @@
+import { getVercelOidcToken } from '@vercel/oidc';
+
 const settings = process.env;
 const subjectTokenType = 'urn:ietf:params:oauth:token-type:jwt';
 const cookieName = '__Host-traveller=';
@@ -70,11 +72,8 @@ export default {
       return error(403, 'forbidden', 'The request must originate from this preview.');
     }
 
-    const subject = request.headers.get('x-vercel-oidc-token');
-    if (!subject) return error(503, 'service_unavailable', 'Preview identity is unavailable.');
-
     try {
-      const token = await googleToken(subject);
+      const token = await googleToken(await getVercelOidcToken());
       const upstreamUrl = new URL(`/api/v1/${path}/`, settings.TRAVELLER_BACKEND_URL);
       for (const [key, value] of url.searchParams) {
         if (key !== 'route') upstreamUrl.searchParams.append(key, value);
