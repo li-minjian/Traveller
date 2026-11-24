@@ -69,6 +69,17 @@ ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
+# Shared DEV binds trip data to a signed browser session. Compose keeps its
+# existing API behavior for scripts and local clients.
+ISOLATE_PLANNING_SESSIONS = env_bool("ISOLATE_PLANNING_SESSIONS", default=False)
+if ISOLATE_PLANNING_SESSIONS:
+    MIDDLEWARE.append("django.contrib.sessions.middleware.SessionMiddleware")
+    SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
+    SESSION_COOKIE_NAME = "__Host-traveller"
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = "Strict"
+
+POSTGRES_SSLMODE = env("POSTGRES_SSLMODE", "prefer")
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -79,9 +90,15 @@ DATABASES = {
         "PORT": env("POSTGRES_PORT", "5432"),
         "CONN_MAX_AGE": 60,
         "CONN_HEALTH_CHECKS": True,
-        "OPTIONS": {"connect_timeout": 5},
+        "DISABLE_SERVER_SIDE_CURSORS": env_bool("POSTGRES_POOLED", default=False),
+        "OPTIONS": {"connect_timeout": 5, "sslmode": POSTGRES_SSLMODE},
     }
 }
+
+if POSTGRES_SSLMODE == "verify-full":
+    DATABASES["default"]["OPTIONS"]["sslrootcert"] = env(
+        "POSTGRES_SSLROOTCERT", "/etc/ssl/certs/ca-certificates.crt"
+    )
 
 # LLM access (package `llm`). "offline" needs no credentials and no network.
 LLM_PROVIDER = env("LLM_PROVIDER", "offline").strip().lower()
@@ -95,6 +112,7 @@ LLM_TIMEOUT_SECONDS = float(env("LLM_TIMEOUT_SECONDS", "20"))
 LLM_MAX_ATTEMPTS = int(env("LLM_MAX_ATTEMPTS", "2"))
 
 # Journey Planner (own service, see docs/SEARCH_CONTRACT.md).
+JOURNEY_PLANNER_USE_CLOUD_RUN_IAM = env_bool("JOURNEY_PLANNER_USE_CLOUD_RUN_IAM", default=False)
 JOURNEY_PLANNER_URL = env("JOURNEY_PLANNER_URL", "http://localhost:8001")
 JOURNEY_PLANNER_TIMEOUT_SECONDS = float(env("JOURNEY_PLANNER_TIMEOUT_SECONDS", "10"))
 
@@ -111,7 +129,7 @@ USE_TZ = True
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
-    # No accounts in the Grundgerüst: every endpoint is public.
+    # Cloud Run authenticates callers before routing to Django in shared DEV.
     "DEFAULT_AUTHENTICATION_CLASSES": [],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
     "UNAUTHENTICATED_USER": None,

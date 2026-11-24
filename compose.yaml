@@ -70,6 +70,7 @@ services:
   journey-planner:
     build: ./journey-planner
     image: traveller-journey-planner:dev
+    command: python manage.py runserver 0.0.0.0:8001
     environment:
       DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
       FLIGHT_PROVIDER: ${FLIGHT_PROVIDER:-dummy}

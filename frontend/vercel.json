@@ -1,9 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "buildCommand": "npm run build:demo",
+  "buildCommand": "if [ \"$VERCEL_ENV\" = \"preview\" ] && [ -n \"$TRAVELLER_BACKEND_URL\" ]; then VITE_DEMO_MODE=false npm run build; else npm run build:demo; fi",
   "outputDirectory": "dist",
   "rewrites": [
+    {
+      "source": "/api/v1/:path*",
+      "destination": "/api/traveller?route=:path*"
+    },
     {
       "source": "/chat",
       "destination": "/index.html"
@@ -12,5 +16,13 @@
       "source": "/status",
       "destination": "/index.html"
     }
+  ],
+  "functions": {
+    "api/traveller.mjs": {
+      "maxDuration": 120
+    }
+  },
+  "regions": [
+    "fra1"
   ]
 }

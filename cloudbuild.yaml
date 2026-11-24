@@ -1,0 +1,57 @@
+# Traveller shared DEV, for the trusted integration branch only.
+steps:
+  - id: backend
+    name: gcr.io/cloud-builders/docker
+    entrypoint: sh
+    args:
+      - -ec
+      - |
+        image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REPO}/traveller-backend:$COMMIT_SHA"
+        docker build --tag "$$image" backend
+        docker push "$$image"
+    waitFor: ['-']
+  - id: journey-planner
+    name: gcr.io/cloud-builders/docker
+    entrypoint: sh
+    args:
+      - -ec
+      - |
+        image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REPO}/traveller-journey-planner:$COMMIT_SHA"
+        docker build --tag "$$image" journey-planner
+        docker push "$$image"
+    waitFor: ['-']
+  - id: shared-dev
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args: [deploy/cloud-run-dev.sh]
+    env:
+      - 'DEPLOY_DEV=${_DEPLOY_DEV}'
+      - 'REGION=${_REGION}'
+      - 'PROJECT_ID=$PROJECT_ID'
+      - 'PROJECT_NUMBER=$PROJECT_NUMBER'
+      - 'ARTIFACT_REPO=${_ARTIFACT_REPO}'
+      - 'COMMIT_SHA=$COMMIT_SHA'
+      - 'BUILD_ID=$BUILD_ID'
+      - 'DB_HOST=${_DB_HOST}'
+      - 'MIGRATION_DB_HOST=${_MIGRATION_DB_HOST}'
+      - 'DB_USER=${_DB_USER}'
+      - 'DB_NAME=${_DB_NAME}'
+      - 'DB_PASSWORD_VERSION=${_DB_PASSWORD_VERSION}'
+      - 'BACKEND_KEY_VERSION=${_BACKEND_KEY_VERSION}'
+      - 'PLANNER_KEY_VERSION=${_PLANNER_KEY_VERSION}'
+      - 'BACKEND_HOST=${_BACKEND_HOST}'
+substitutions:
+  _REGION: europe-west1
+  _ARTIFACT_REPO: cloud-run-source-deploy
+  _DEPLOY_DEV: 'false'
+  _DB_HOST: ''
+  _MIGRATION_DB_HOST: ''
+  _DB_USER: ''
+  _DB_NAME: ''
+  _DB_PASSWORD_VERSION: '1'
+  _BACKEND_KEY_VERSION: '1'
+  _PLANNER_KEY_VERSION: '1'
+  _BACKEND_HOST: ''
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 900s

@@ -3,6 +3,8 @@
 Django==5.2.19
 djangorestframework==3.18.3
 
+gunicorn==27.0.1
+
 # Transitive Abhängigkeiten
 asgiref==3.13.0
 sqlparse==0.6.1

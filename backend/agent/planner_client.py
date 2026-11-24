@@ -4,6 +4,7 @@ import json
 import logging
 import urllib.error
 import urllib.request
+from urllib.parse import urlencode
 
 from django.conf import settings
 
@@ -22,13 +23,27 @@ class PlannerClient:
         self._url = self._base + "/plan"
         self._timeout = timeout_seconds or settings.JOURNEY_PLANNER_TIMEOUT_SECONDS
 
+    def _open(self, request):
+        if settings.JOURNEY_PLANNER_USE_CLOUD_RUN_IAM:
+            query = urlencode({"audience": self._base})
+            identity = urllib.request.Request(
+                "http://metadata.google.internal/computeMetadata/v1/"
+                f"instance/service-accounts/default/identity?{query}",
+                headers={"Metadata-Flavor": "Google"},
+            )
+            with urllib.request.urlopen(identity, timeout=3) as response:
+                token = response.read().decode("ascii")
+            # Never forward the identity token if the planner redirects.
+            request.add_unredirected_header("Authorization", f"Bearer {token}")
+        return urllib.request.urlopen(request, timeout=self._timeout)
+
     def places(self) -> list[dict]:
         """GET /places: the places the planner has flights for."""
         request = urllib.request.Request(
             self._base + "/places", headers={"Accept": "application/json"}, method="GET"
         )
         try:
-            with urllib.request.urlopen(request, timeout=self._timeout) as response:
+            with self._open(request) as response:
                 answer = json.loads(response.read())
         except (OSError, ValueError) as error:
             logger.warning("Journey Planner places unavailable: %s", type(error).__name__)
@@ -55,7 +70,7 @@ class PlannerClient:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request, timeout=self._timeout) as response:
+            with self._open(request) as response:
                 answer = json.loads(response.read())
         except urllib.error.HTTPError as error:
             # 400 here means the agent built an invalid request: a bug, not user input.

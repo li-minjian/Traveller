@@ -21,7 +21,7 @@ def health(request):
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
     except DatabaseError as exc:
-        logger.warning("Health check: database unavailable: %s", exc)
+        logger.warning("Health check: database unavailable: %s", type(exc).__name__)
         return Response(
             error_body("service_unavailable", "The database is not reachable."),
             status=status.HTTP_503_SERVICE_UNAVAILABLE,

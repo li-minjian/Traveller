@@ -1,5 +1,7 @@
 import logging
+import uuid
 
+from django.conf import settings
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, serializers, status
@@ -22,6 +24,14 @@ from planning.trip_state import INFERRED, TripState, load_trip_state, save_trip_
 logger = logging.getLogger(__name__)
 
 
+def browser_sessions(request):
+    sessions = PlanningSession.objects.all()
+    if settings.ISOLATE_PLANNING_SESSIONS:
+        owner = request.session.get("planning_owner")
+        return sessions.filter(browser_owner=owner) if owner else sessions.none()
+    return sessions
+
+
 class PlanningSessionCreateView(generics.CreateAPIView):
     """POST /api/v1/planning-sessions/"""
 
@@ -34,14 +44,22 @@ class PlanningSessionCreateView(generics.CreateAPIView):
         # confirm it before the first search.
         state = TripState()
         state.apply({"travelers": 1}, provenance=INFERRED)
-        serializer.save(trip_state=state.to_dict())
+        owner = None
+        if settings.ISOLATE_PLANNING_SESSIONS:
+            owner = self.request.session.get("planning_owner")
+            if owner is None:
+                owner = str(uuid.uuid4())
+                self.request.session["planning_owner"] = owner
+        serializer.save(trip_state=state.to_dict(), browser_owner=owner)
 
 
 class PlanningSessionDetailView(generics.RetrieveAPIView):
     """GET /api/v1/planning-sessions/{id}/"""
 
-    queryset = PlanningSession.objects.all()
     serializer_class = PlanningSessionSerializer
+
+    def get_queryset(self):
+        return browser_sessions(self.request)
 
 
 class PlaceListView(generics.GenericAPIView):
@@ -57,7 +75,8 @@ class PlaceListView(generics.GenericAPIView):
 class TripStateView(generics.GenericAPIView):
     """GET /api/v1/planning-sessions/{id}/trip-state/ – what is known about the trip."""
 
-    queryset = PlanningSession.objects.all()
+    def get_queryset(self):
+        return browser_sessions(self.request)
 
     def get(self, request, pk):
         state = load_trip_state(self.get_object())
@@ -72,11 +91,11 @@ class MessageListCreateView(generics.ListAPIView):
     serializer_class = MessageSerializer
 
     def get_queryset(self):
-        session = get_object_or_404(PlanningSession, pk=self.kwargs["pk"])
+        session = get_object_or_404(browser_sessions(self.request), pk=self.kwargs["pk"])
         return session.messages.all()
 
     def post(self, request, pk):
-        session = get_object_or_404(PlanningSession, pk=pk)
+        session = get_object_or_404(browser_sessions(self.request), pk=pk)
         body = MessageInputSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         text = body.validated_data.get("text", "").strip()

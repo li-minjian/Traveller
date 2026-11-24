@@ -18,4 +18,4 @@ USER app
 
 EXPOSE 8001
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8001"]
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-8001} --threads 4 --timeout 100 config.wsgi:application"]

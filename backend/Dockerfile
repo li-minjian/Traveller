@@ -20,5 +20,4 @@ USER app
 
 EXPOSE 8000
 
-# Django's development server reloads automatically on code changes.
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-8000} --threads 4 --timeout 100 config.wsgi:application"]

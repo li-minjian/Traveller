@@ -2,7 +2,7 @@
 
 import uuid
 
-from django.test import TestCase
+from django.test import Client, TestCase, modify_settings, override_settings
 from rest_framework.test import APIClient
 
 from planning.models import PlanningSession
@@ -107,3 +107,27 @@ class RetrievePlanningSessionTests(TestCase):
                     response.json(),
                     {"error": {"code": "not_found", "message": "The requested resource was not found."}},
                 )
+
+
+@modify_settings(MIDDLEWARE={"append": "django.contrib.sessions.middleware.SessionMiddleware"})
+@override_settings(
+    ISOLATE_PLANNING_SESSIONS=True,
+    SESSION_ENGINE="django.contrib.sessions.backends.signed_cookies",
+    SESSION_COOKIE_NAME="__Host-traveller",
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_SAMESITE="Strict",
+)
+class BrowserSessionIsolationTests(TestCase):
+    def test_session_data_requires_the_creating_browser_cookie(self):
+        response = self.client.post(LIST_URL, {"title": "Shared DEV trip"}, content_type="application/json")
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response.cookies["__Host-traveller"]["secure"])
+        url = detail_url(response.json()["id"])
+        other_browser = Client()
+        for path in (url, url + "trip-state/", url + "messages/"):
+            self.assertEqual(self.client.get(path).status_code, 200)
+            self.assertEqual(other_browser.get(path).status_code, 404)
+        self.assertEqual(
+            other_browser.post(url + "messages/", {"text": "hello"}, content_type="application/json").status_code,
+            404,
+        )

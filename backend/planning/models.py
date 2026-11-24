@@ -7,6 +7,7 @@ class PlanningSession(models.Model):
     """A travel planning session; later anchor for trip state and chat history."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    browser_owner = models.UUIDField(null=True, editable=False)
     title = models.CharField(max_length=200)
     created_at = models.DateTimeField(auto_now_add=True)
     # Known trip data with provenance; read and written via planning.trip_state.
