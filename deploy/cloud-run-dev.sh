@@ -11,6 +11,12 @@ esac
 : "${PROJECT_ID:?}" "${PROJECT_NUMBER:?}" "${REGION:?}" "${ARTIFACT_REPO:?}" "${COMMIT_SHA:?}" "${BUILD_ID:?}"
 : "${DB_PASSWORD_VERSION:?}" "${BACKEND_KEY_VERSION:?}" "${PLANNER_KEY_VERSION:?}"
 
+if [[ "$DB_HOST" == *.neon.tech &&
+      ( "$DB_HOST" != *-pooler.* || "${DB_HOST/-pooler./.}" != "$MIGRATION_DB_HOST" || "$MIGRATION_DB_HOST" == *-pooler.* ) ]]; then
+  printf '%s\n' 'Use the Neon pooled hostname for Django and its direct counterpart for migrations.' >&2
+  exit 2
+fi
+
 registry="$REGION-docker.pkg.dev/$PROJECT_ID/$ARTIFACT_REPO"
 backend_image="$registry/traveller-backend:$COMMIT_SHA"
 planner_image="$registry/traveller-journey-planner:$COMMIT_SHA"

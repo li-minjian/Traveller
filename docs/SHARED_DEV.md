@@ -9,7 +9,9 @@ The itinerary and map continue to use the frontend's sample itinerary.
 ## Access
 
 Vercel protects the Preview with Vercel Authentication. Team members use the
-protected branch URL and sign in with Vercel. The browser calls relative
+protected branch URL and sign in with Vercel or use the branch's revocable
+teammate link. Treat that link as a credential and share it privately. The
+browser calls relative
 `/api/v1/` URLs. A Vercel function exchanges its Preview OIDC identity for a
 short-lived Google ID token. Django calls the private planner using its Cloud Run
 identity. Each browser has a signed secure cookie that scopes access to its own
@@ -25,7 +27,9 @@ and stores no account identity or cross-device session mapping.
 - The CI identity pushes commit-tagged images. Set `_DEPLOY_DEV=true` after
   bootstrapping both private services and the migration job. The migration job
   uses the direct Neon host, while Django uses the pooled host. Both verify TLS.
-  Set the database host, user, and name through trigger substitutions. Change
+  Set the database host, user, and name through trigger substitutions.
+  Confirm the returned Neon hostname before deriving its counterpart, because
+  a connection string can already use the pooler. Change
   pinned Secret Manager version substitutions when rotating credentials.
 - The backend uses `LLM_PROVIDER=offline`. The planner uses
   `FLIGHT_PROVIDER=dummy`. Cloud Run scales to zero with at most two instances

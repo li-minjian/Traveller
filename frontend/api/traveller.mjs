@@ -124,7 +124,8 @@ export default {
         return Response.json(data, { status: upstream.status, headers: responseHeaders });
       }
       return new Response(upstream.body, { status: upstream.status, headers: responseHeaders });
-    } catch {
+    } catch (failure) {
+      console.error('Traveller preview API request failed', failure?.name ?? 'Error');
       return error(502, 'bad_gateway', 'The shared DEV backend is unavailable.');
     }
   },
