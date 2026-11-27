@@ -1,4 +1,7 @@
-"""DS1 (#21): shared contract between the Journey Planner and all transport services.
+"""DS1 (#21): the Journey Planner's Python implementation of the transport service contract.
+
+The binding contract is ``domain-services/contract/openapi.yaml``; this module
+mirrors it as typed, validated objects for the Journey Planner.
 
 Every transport service (flight, train, taxi, later bus, ...) is reached the same way:
 
@@ -7,9 +10,8 @@ Every transport service (flight, train, taxi, later bus, ...) is reached the sam
 The Journey Planner only knows the types in this module. It never sees
 provider APIs, provider IDs formats or provider error types.
 
-The same contract is available over HTTP/JSON (see ``http_binding.py`` and
-``openapi.yaml``). ``to_dict()`` / ``from_dict()`` produce and accept exactly
-the JSON documented there.
+``to_dict()`` / ``from_dict()`` produce and accept exactly the JSON of
+``openapi.yaml``; ``http_binding.py`` maps results to HTTP status codes.
 
 Invariants are checked when an object is constructed, so an instance of
 ``JourneySearchRequest`` or ``JourneySearchResult`` is always valid.

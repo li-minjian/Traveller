@@ -1,6 +1,7 @@
-"""DS1 (#21): how the Journey Planner talks to all transport domain services.
+"""Journey Planner. So far: the generic caller for all transport domain services (DS1 #21).
 
-Import from here; the submodules are an implementation detail.
+``contract`` implements the DS1 contract (domain-services/contract/openapi.yaml) as
+Python types; ``http_binding`` maps them to HTTP, ``mocks`` are example services.
 """
 
 from .contract import (

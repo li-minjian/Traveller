@@ -7,8 +7,8 @@ info:
     service (flight, train, taxi/ride-hailing, later bus, ferry). Every transport service offers
     exactly this endpoint; the Journey Planner calls all of them the same way.
 
-    The Python form of the same contract is `domain_services/contract.py`.
-    Background and rules: `docs/DS1_CONTRACT.md`.
+    This file is the binding contract; there is no shared code. Meaning of
+    the fields and rules across fields: `README.md` next to this file.
 
     HTTP status codes:
     * `200`: the service handled the search. The body says what happened in
