@@ -4,7 +4,8 @@
     python3 -m airport_finder.update_data
 
 * airports.csv   <- https://davidmegginson.github.io/ourairports-data/airports.csv (public domain)
-* timezones.json <- https://api.travelpayouts.com/data/en/airports.json (IATA -> time zone)
+* timezones.json <- https://api.travelpayouts.com/data/en/airports.json (IATA -> time zone,
+                   only airports Travelpayouts marks as flightable)
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ def main() -> None:
     zones = {
         a["code"]: a["time_zone"]
         for a in airports
-        if a.get("iata_type") == "airport" and a.get("code") and a.get("time_zone")
+        if a.get("iata_type") == "airport" and a.get("flightable") is True and a.get("code") and a.get("time_zone")
     }
     TIMEZONES_JSON.write_text(json.dumps(dict(sorted(zones.items())), separators=(",", ":")), encoding="utf-8")
     print(f"airports.csv updated, {len(zones)} time zones")

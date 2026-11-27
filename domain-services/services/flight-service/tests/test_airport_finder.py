@@ -27,6 +27,10 @@ class RealDataTests(unittest.TestCase):
         self.assertNotIn("TXL", everything)  # Berlin Tegel, closed
         self.assertNotIn("THF", everything)  # Berlin Tempelhof, closed
 
+    def test_airports_the_flight_api_rejects_are_ignored(self):
+        codes = {n.airport.iata for n in self.finder.nearest(54.18, 7.89, radius_km=100, max_airports=50).airports}
+        self.assertNotIn("FCN", codes)  # Cuxhaven: "not flightable" at Travelpayouts
+
     def test_radius_grows_until_an_airport_is_found(self):
         area = self.finder.nearest(40.0, -40.0)  # middle of the Atlantic
         self.assertGreater(area.radius_km, 30)

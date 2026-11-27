@@ -15,7 +15,7 @@ Flight Request  ──►  Airport-Finder  ──►  Adapter (Travelpayouts)  �
 Nimmt die Anfrage an und prüft sie. Er reicht Start- und Zielpunkt an den Airport-Finder weiter, verteilt die Suche auf alle Flughafenpaare und Adapter und baut daraus die Antwort. Findet kein Adapter einen Flug, ist das Ergebnis `no_results`.
 
 **Airport-Finder** (`src/airport_finder/`)
-Sucht Flughäfen im Umkreis von 30 km um einen Punkt. Findet er keinen, erweitert er den Radius in 10-km-Schritten. Er nimmt höchstens 3 Flughäfen je Seite, die nächsten zuerst. Geschlossene Flughäfen, Flugplätze ohne Linienverkehr und Heliports werden ignoriert. Die Daten kommen aus `airports.csv` (OurAirports) und `timezones.json`.
+Sucht Flughäfen im Umkreis von 30 km um einen Punkt. Findet er keinen, erweitert er den Radius in 10-km-Schritten. Er nimmt höchstens 3 Flughäfen je Seite, die nächsten zuerst. Geschlossene Flughäfen, Flugplätze ohne Linienverkehr, Heliports und Flughäfen, die Travelpayouts nicht anfliegt, werden ignoriert. Die Daten kommen aus `airports.csv` (OurAirports) und `timezones.json`.
 
 **Adapter** (`src/adapters/`)
 Sprechen eine externe API an und wandeln die Antwort in das Format des Vertrags um. Scheitert ein Aufruf, meldet der Adapter einen Fehler, und der Flight Service gibt ihn als `partial` oder `unavailable` weiter. Bisher gibt es einen Adapter, `travelpayouts`.

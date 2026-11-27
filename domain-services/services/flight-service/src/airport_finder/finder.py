@@ -6,8 +6,9 @@ Data (both in this folder, refreshed with ``update_data.py``):
   ``medium_airport`` with ``scheduled_service = yes`` and an IATA code are
   used; closed airports, small airfields, heliports etc. are ignored.
 * ``timezones.json``: IATA code -> IANA time zone (from the Travelpayouts
-  data API). Needed for local arrival times. Airports without a time zone
-  are ignored.
+  data API), only for airports Travelpayouts marks as flightable. Needed for
+  local arrival times. Airports missing here are ignored, so the finder
+  never picks an airport the flight API rejects (e.g. FCN Cuxhaven).
 
 Search: all airports within ``radius_km`` (default 30 km). If there is none,
 the radius grows in steps of ``step_km`` (default 10 km) until at least one
