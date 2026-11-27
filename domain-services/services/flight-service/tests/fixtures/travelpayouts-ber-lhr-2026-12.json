@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "currency": "eur",
+  "data": [
+    {"flight_number": "992", "link": "/search/BER1512LON1?t=BA1", "origin_airport": "BER", "destination_airport": "LHR", "departure_at": "2026-12-15T10:00:00+01:00", "airline": "BA", "destination": "LON", "origin": "BER", "price": 129, "return_transfers": 0, "duration": 110, "duration_to": 110, "duration_back": 0, "transfers": 0},
+    {"flight_number": "992", "link": "/search/BER1512LON1?t=BA2", "origin_airport": "BER", "destination_airport": "LHR", "departure_at": "2026-12-15T10:00:00+01:00", "airline": "BA", "destination": "LON", "origin": "BER", "price": 119, "return_transfers": 0, "duration": 110, "duration_to": 110, "duration_back": 0, "transfers": 0},
+    {"flight_number": "2470", "link": null, "origin_airport": "BER", "destination_airport": "LHR", "departure_at": "2026-12-15T18:30:00+01:00", "airline": "XQ", "destination": "LON", "origin": "BER", "price": 0, "return_transfers": 0, "duration": 115, "duration_to": 115, "duration_back": 0, "transfers": 0},
+    {"flight_number": "1234", "link": "/search/BER1512LON1?t=LH1", "origin_airport": "BER", "destination_airport": "LHR", "departure_at": "2026-12-15T12:00:00+01:00", "airline": "LH", "destination": "LON", "origin": "BER", "price": 89, "return_transfers": 0, "duration": 240, "duration_to": 240, "duration_back": 0, "transfers": 1},
+    {"flight_number": "5714", "link": "/search/BER1512LON1?t=U2", "origin_airport": "BER", "destination_airport": "SEN", "departure_at": "2026-12-15T20:40:00+01:00", "airline": "U2", "destination": "LON", "origin": "BER", "price": 41, "return_transfers": 0, "duration": 105, "duration_to": 105, "duration_back": 0, "transfers": 0},
+    {"flight_number": "994", "link": "/search/BER1612LON1?t=BA3", "origin_airport": "BER", "destination_airport": "LHR", "departure_at": "2026-12-16T07:00:00+01:00", "airline": "BA", "destination": "LON", "origin": "BER", "price": 99, "return_transfers": 0, "duration": 110, "duration_to": 110, "duration_back": 0, "transfers": 0},
+    {"flight_number": "990", "link": "/search/BER1412LON1?t=BA4", "origin_airport": "BER", "destination_airport": "LHR", "departure_at": "2026-12-14T10:00:00+01:00", "airline": "BA", "destination": "LON", "origin": "BER", "price": 79, "return_transfers": 0, "duration": 110, "duration_to": 110, "duration_back": 0, "transfers": 0}
+  ]
+}

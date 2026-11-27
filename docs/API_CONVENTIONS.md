@@ -82,7 +82,7 @@ Vorhandene Codes: `validation_error`, `parse_error`, `unsupported_media_type`, `
 - **Zeitpunkte** folgen ISO 8601 mit Zeitzone. Antworten verwenden UTC mit `Z`: `"2026-11-10T12:12:15.800785Z"`.
 - **Eingaben** sollen eine Zeitzone enthalten (`Z` oder `+01:00`). Ohne Angabe behandelt das Backend den Wert als UTC.
 - **Kalenderdaten** ohne Uhrzeit haben das Format `YYYY-MM-DD`, z. B. Reisedaten wie `"2022-03-16"`.
-- **Ortszeiten** wie Abfahrt oder Ankunft kommen mit dem Offset des Ortes: `"2026-12-15T08:00:00+01:00"` (noch nicht verwendet, vgl. DS1 #21).
+- **Ortszeiten** wie Abfahrt oder Ankunft kommen mit dem Offset des Ortes: `"2026-12-15T08:00:00+01:00"` (verwendet in [`domain-services/contract/openapi.yaml`](../domain-services/contract/openapi.yaml)).
 - **Dauern** tragen ihre Einheit im Feldnamen: `days`, `duration_minutes`.
 
 ## 7. Geldbeträge

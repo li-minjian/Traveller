@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Transport Service Search API (DS1)
+  title: Transport Service Search API
   version: "1.0"
   description: |
     Shared interface between the Journey Planner and every transport domain

@@ -4,7 +4,7 @@ Die Transportservices (Flug, Bahn, Taxi, später Bus, Fähre) und ihre gemeinsam
 
 ```text
                     Journey Planner
-                          │  DS1-Vertrag (contract/)
+                          │  Vertrag (contract/openapi.yaml)
             ┌─────────────┼─────────────┐
             ▼             ▼             ▼
       flight-service  train-service    …          (kennen sich nicht)
@@ -14,7 +14,7 @@ Die Transportservices (Flug, Bahn, Taxi, später Bus, Fähre) und ihre gemeinsam
 
 | Ordner | Inhalt |
 | --- | --- |
-| [`contract/`](contract/README.md) | **DS1-Vertrag**, nur Dokumentation: `openapi.yaml` (verbindlich), `README.md` (Regeln), `examples/` |
+| [`contract/`](contract/README.md) | **Vertrag**, nur Dokumentation: `openapi.yaml` (verbindlich), `README.md` (Regeln), `examples/` |
 | [`services/`](services/) | ein Ordner pro Transportservice, z. B. `services/flight-service/` |
 
 ## Regeln

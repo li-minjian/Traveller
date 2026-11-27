@@ -45,8 +45,8 @@ Startreihenfolge: Das Backend startet erst, wenn die Datenbank ihren Healthcheck
 | `frontend/src/features/` | Seiten; bisher die Statusseite `SystemStatus.tsx` |
 | `frontend/src/app/`, `frontend/src/components/` | Routing, Layout und gemeinsame Bausteine |
 | `frontend/tests/` | Unit-Tests (Vitest) |
-| `journey-planner/` | Journey Planner. Bisher nur die eigene Umsetzung des DS1-Vertrags als Python-Typen, der generische Aufrufer `search_one`/`search_all` und Mock-Services, mit Tests (Paket `journey_planner`). Der Service selbst ist **geplant** (JP01 #38). |
-| `domain-services/` | `contract/`: DS1-Vertrag (#21) zwischen Journey Planner und allen Transportservices, nur Dokumentation (`openapi.yaml`, Regeln, Beispiele). `services/`: ein Ordner pro Transportservice, ohne Abhängigkeiten untereinander (Neuimplementierung, im Aufbau). Siehe [README](../domain-services/README.md). |
+| `journey-planner/` | Journey Planner. Bisher nur die eigene Umsetzung von [`domain-services/contract/openapi.yaml`](../domain-services/contract/openapi.yaml) als Python-Typen, der generische Aufrufer `search_one`/`search_all` und Mock-Services, mit Tests (Paket `journey_planner`). Der Service selbst ist **geplant** (JP01 #38). |
+| `domain-services/` | `contract/`: Vertrag zwischen Journey Planner und allen Transportservices, nur Dokumentation (`openapi.yaml`, Regeln, Beispiele). `services/`: ein Ordner pro Transportservice, ohne Abhängigkeiten untereinander (Neuimplementierung, im Aufbau). Siehe [README](../domain-services/README.md). |
 | `docs/` | Projekt- und Entwicklerdokumentation |
 | `compose.yaml` | lokale Entwicklungsumgebung mit `frontend`, `backend` und `db` |
 | `.env.example` | lokale Beispielkonfiguration; die eigene `.env` wird nicht eingecheckt |
