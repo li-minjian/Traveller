@@ -1,8 +1,6 @@
-# DS1 – Schnittstelle Journey Planner ↔ Transportservices
+# Schnittstelle Transportservices
 
-Ticket: [DS1 #21](https://github.com/li-minjian/Traveller/issues/21) · Vertragsversion **1.0** · Status: **Entwurf zur Abstimmung** mit den Journey-Planner-Verantwortlichen (JP01–JP03) und DS2/DS6.
-
-Dieses Dokument legt fest, wie der Journey Planner **jeden** Transportservice (Flug, Bahn, Taxi/Ride-Hailing, später Bus, Fähre) anfragt. Der Journey Planner kennt nur diesen Vertrag, keine Anbieter-APIs. Wie ein Service intern seine Anbieter anbindet (Provider-Adapter), regelt DS2 (#23).
+Dieses Dokument legt fest, wie der Journey Planner **jeden** Transportservice (Flug, Bahn, Taxi/Ride-Hailing, später Bus, Fähre) anfragt. Der Journey Planner kennt nur diesen Vertrag, keine Anbieter-APIs. Wie ein Service intern seine Anbieter anbindet kann unterschiedlich sein
 
 ```text
 Journey Planner
@@ -16,11 +14,11 @@ taxi-service    ──  Provider-Adapter  ──  Taxi-/Uber-APIs
 
 Der Vertrag besteht nur aus Dokumentation, **es gibt keinen gemeinsamen Code**. Jeder Service setzt ihn in seiner eigenen Sprache und mit eigenem Code um, der Journey Planner ebenso.
 
-| Datei | Inhalt |
-| --- | --- |
-| [`openapi.yaml`](openapi.yaml) | **verbindliche Beschreibung** der API: Endpunkt, Felder, Typen, Pflichtfelder, Wertebereiche, Statuscodes |
-| `README.md` (dieses Dokument) | Bedeutung der Felder und Regeln, die sich in OpenAPI nicht ausdrücken lassen (z. B. Reihenfolge der Legs, erlaubte Kombinationen von `status`, `journeys` und `errors`) |
-| [`examples/`](examples/) | Beispiel-Requests und -Responses für alle Status und den Validierungsfehler |
+| Datei                          | Inhalt                                                                                                                                                                  |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`openapi.yaml`](openapi.yaml) | **verbindliche Beschreibung** der API: Endpunkt, Felder, Typen, Pflichtfelder, Wertebereiche, Statuscodes                                                               |
+| `README.md` (dieses Dokument)  | Bedeutung der Felder und Regeln, die sich in OpenAPI nicht ausdrücken lassen (z. B. Reihenfolge der Legs, erlaubte Kombinationen von `status`, `journeys` und `errors`) |
+| [`examples/`](examples/)       | Beispiel-Requests und -Responses für alle Status und den Validierungsfehler                                                                                             |
 
 Ein Service kann sich gegen `openapi.yaml` und `examples/` prüfen, z. B. mit einem OpenAPI-Validator oder indem er die Beispiel-Requests beantwortet und die Antworten gegen das Schema validiert.
 
@@ -44,7 +42,7 @@ Ein Service kann sich gegen `openapi.yaml` und `examples/` prüfen, z. B. mit ei
   "destination_id": "munich",
   "departure_after": "2026-12-15T06:00:00+01:00",
   "departure_before": "2026-12-15T14:00:00+01:00",
-  "passengers": [{"age": 34}, {"age": 8}]
+  "passengers": [{ "age": 34 }, { "age": 8 }]
 }
 ```
 
@@ -54,22 +52,22 @@ Taxifahrt innerhalb Berlins, von einer Adresse zum Flughafen ([`examples/request
 {
   "origin_id": "berlin",
   "destination_id": "berlin",
-  "origin_coordinates": {"latitude": 52.5251, "longitude": 13.3694},
-  "destination_coordinates": {"latitude": 52.3667, "longitude": 13.5033},
+  "origin_coordinates": { "latitude": 52.5251, "longitude": 13.3694 },
+  "destination_coordinates": { "latitude": 52.3667, "longitude": 13.5033 },
   "departure_after": "2026-12-15T05:30:00+01:00",
   "departure_before": null,
-  "passengers": [{"age": 34}, {"age": 8}]
+  "passengers": [{ "age": 34 }, { "age": 8 }]
 }
 ```
 
-| Feld | Pflicht | Regel |
-| --- | --- | --- |
-| `origin_id`, `destination_id` | ja | Gemeinsame Orts-ID auf **Stadtebene**, kleingeschriebener Slug (`berlin`, `frankfurt-am-main`). Der Service übersetzt sie in Bahnhöfe/Flughäfen seiner Anbieter. Beide verschieden, außer `origin_coordinates` und `destination_coordinates` sind angegeben (Fahrt innerhalb einer Stadt). |
-| `origin_coordinates`, `destination_coordinates` | nein | Genauer Start-/Zielpunkt (Hotel, Adresse) als `{"latitude", "longitude"}` (WGS 84). Für Tür-zu-Tür-Services wie Taxi; andere Services dürfen sie ignorieren. Fehlen sie, rechnet ein Taxi-Service ab bzw. bis Stadtmitte. Adressen in Koordinaten umzuwandeln (Geocoding) ist nicht Teil von DS1. |
-| `departure_after` | ja | Früheste Abfahrt (inklusive). ISO 8601 **mit Offset**, Ortszeit des Startorts. Ohne Offset gibt es einen Validierungsfehler (strenger als API-Konventionen §6, weil Ortszeiten ohne Offset mehrdeutig sind). |
-| `departure_before` | nein | Späteste Abfahrt (inklusive), muss nach `departure_after` liegen. Fehlt sie oder ist sie `null`, entscheidet der Service, mindestens bis Ende des Ortstags. |
-| `passengers` | nein | Ein Eintrag pro Reisendem, 1 bis 9 Einträge. Fehlt es, gilt ein Reisender ohne Altersangabe. |
-| `passengers[].age` | nein | Alter in Jahren am Reisetag, 0–120. Fehlt es oder ist es `null`, behandelt der Service die Person wie einen Erwachsenen. Services nutzen bekannte Alter für Tarife (Kind, Kleinkind, Senior); ab welchem Alter welcher Tarif gilt, entscheidet der Service bzw. Anbieter, nicht der Vertrag. |
+| Feld                                            | Pflicht | Regel                                                                                                                                                                                                                                                                                             |
+| ----------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `origin_id`, `destination_id`                   | ja      | Gemeinsame Orts-ID auf **Stadtebene**, kleingeschriebener Slug (`berlin`, `frankfurt-am-main`). Der Service übersetzt sie in Bahnhöfe/Flughäfen seiner Anbieter. Beide verschieden, außer `origin_coordinates` und `destination_coordinates` sind angegeben (Fahrt innerhalb einer Stadt).        |
+| `origin_coordinates`, `destination_coordinates` | nein    | Genauer Start-/Zielpunkt (Hotel, Adresse) als `{"latitude", "longitude"}` (WGS 84). Für Tür-zu-Tür-Services wie Taxi; andere Services dürfen sie ignorieren. Fehlen sie, rechnet ein Taxi-Service ab bzw. bis Stadtmitte. Adressen in Koordinaten umzuwandeln (Geocoding) ist nicht Teil von DS1. |
+| `departure_after`                               | ja      | Früheste Abfahrt (inklusive). ISO 8601 **mit Offset**, Ortszeit des Startorts. Ohne Offset gibt es einen Validierungsfehler (strenger als API-Konventionen §6, weil Ortszeiten ohne Offset mehrdeutig sind).                                                                                      |
+| `departure_before`                              | nein    | Späteste Abfahrt (inklusive), muss nach `departure_after` liegen. Fehlt sie oder ist sie `null`, entscheidet der Service, mindestens bis Ende des Ortstags.                                                                                                                                       |
+| `passengers`                                    | nein    | Ein Eintrag pro Reisendem, 1 bis 9 Einträge. Fehlt es, gilt ein Reisender ohne Altersangabe.                                                                                                                                                                                                      |
+| `passengers[].age`                              | nein    | Alter in Jahren am Reisetag, 0–120. Fehlt es oder ist es `null`, behandelt der Service die Person wie einen Erwachsenen. Services nutzen bekannte Alter für Tarife (Kind, Kleinkind, Senior); ab welchem Alter welcher Tarif gilt, entscheidet der Service bzw. Anbieter, nicht der Vertrag.      |
 
 Unbekannte Felder werden ignoriert (API-Konventionen §5). Filter wie Budget, maximale Umstiege oder Ranking gehören **nicht** in den Request: das macht der Journey Planner (JP03) auf den Ergebnissen.
 
@@ -89,8 +87,18 @@ Gekürzt aus [`examples/result-success.json`](examples/result-success.json) (2 R
       "legs": [
         {
           "mode": "flight",
-          "origin": {"location_id": "berlin", "name": "Berlin Brandenburg Airport", "code": "BER", "coordinates": null},
-          "destination": {"location_id": "munich", "name": "Munich Airport", "code": "MUC", "coordinates": null},
+          "origin": {
+            "location_id": "berlin",
+            "name": "Berlin Brandenburg Airport",
+            "code": "BER",
+            "coordinates": null
+          },
+          "destination": {
+            "location_id": "munich",
+            "name": "Munich Airport",
+            "code": "MUC",
+            "coordinates": null
+          },
           "departure_at": "2026-12-15T07:05:00+01:00",
           "arrival_at": "2026-12-15T08:15:00+01:00",
           "operator": "Mock Air",
@@ -102,7 +110,11 @@ Gekürzt aus [`examples/result-success.json`](examples/result-success.json) (2 R
         {
           "id": "mock-airline-ma100-2026-12-15-0",
           "provider_id": "mock-airline",
-          "price": {"amount": 155.75, "currency": "EUR", "basis": "trip_total"},
+          "price": {
+            "amount": 155.75,
+            "currency": "EUR",
+            "basis": "trip_total"
+          },
           "price_upper": null,
           "availability": "available",
           "is_price_estimate": false,
@@ -125,13 +137,13 @@ JourneySearchResult ─┬─ journeys: Journey[]  ─┬─ legs:   Leg[]   (�
                      └─ errors:   ServiceError[]
 ```
 
-| Objekt | Felder | Regeln |
-| --- | --- | --- |
-| **Journey** | `id`, `provider_id`, `legs`, `offers` | Eine vollständige Verbindung vom Start zum Ziel. **Mehrere Legs** = Umstiege. `id` ist im Ergebnis eindeutig. |
-| **Leg** | `mode`, `origin`, `destination`, `departure_at`, `arrival_at`, `operator`, `service_number`, `is_on_demand` | Eine Fahrt in einem Fahrzeug. `mode`: `flight`, `train`, `bus`, `ferry`, `taxi`. Zeiten in Ortszeit mit Offset. Jedes Leg fährt nicht vor der Ankunft des vorigen ab. `is_on_demand: true` = kein Fahrplan, das Fahrzeug kommt bei Buchung (Taxi): `departure_at` ist die früheste Abholung, `arrival_at` eine Schätzung. |
-| **Stop** | `location_id`, `name`, `code`, `coordinates` | `location_id` wie im Request (Stadt), `name`/`code` für den konkreten Bahnhof oder Flughafen (`BER`), `coordinates` für den genauen Punkt, falls bekannt (bei Taxi immer). |
-| **Offer** | `id`, `provider_id`, `price`, `price_upper`, `availability`, `is_price_estimate`, `fare_name`, `booking_url` | Ein Tarif für die ganze Journey, bei Taxi eine Fahrzeugklasse (`Standard`, `XL`). `availability`: `available`, `sold_out`, `unknown`. `is_price_estimate: true` = Preis aus Fahrplan-/Tarifdaten oder Fahrpreisschätzung, kein bestätigtes, buchbares Angebot. `price_upper`: Obergrenze, wenn der Anbieter nur eine Spanne nennt (typisch bei Uber & Co., „23–29 €“); `price` ist dann die Untergrenze. |
-| **Money** | `amount`, `currency`, `basis` | Wie API-Konventionen §7. `basis`: `trip_total` (alle Reisenden) oder `per_person`. |
+| Objekt      | Felder                                                                                                       | Regeln                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Journey** | `id`, `provider_id`, `legs`, `offers`                                                                        | Eine vollständige Verbindung vom Start zum Ziel. **Mehrere Legs** = Umstiege. `id` ist im Ergebnis eindeutig.                                                                                                                                                                                                                                                                                            |
+| **Leg**     | `mode`, `origin`, `destination`, `departure_at`, `arrival_at`, `operator`, `service_number`, `is_on_demand`  | Eine Fahrt in einem Fahrzeug. `mode`: `flight`, `train`, `bus`, `ferry`, `taxi`. Zeiten in Ortszeit mit Offset. Jedes Leg fährt nicht vor der Ankunft des vorigen ab. `is_on_demand: true` = kein Fahrplan, das Fahrzeug kommt bei Buchung (Taxi): `departure_at` ist die früheste Abholung, `arrival_at` eine Schätzung.                                                                                |
+| **Stop**    | `location_id`, `name`, `code`, `coordinates`                                                                 | `location_id` wie im Request (Stadt), `name`/`code` für den konkreten Bahnhof oder Flughafen (`BER`), `coordinates` für den genauen Punkt, falls bekannt (bei Taxi immer).                                                                                                                                                                                                                               |
+| **Offer**   | `id`, `provider_id`, `price`, `price_upper`, `availability`, `is_price_estimate`, `fare_name`, `booking_url` | Ein Tarif für die ganze Journey, bei Taxi eine Fahrzeugklasse (`Standard`, `XL`). `availability`: `available`, `sold_out`, `unknown`. `is_price_estimate: true` = Preis aus Fahrplan-/Tarifdaten oder Fahrpreisschätzung, kein bestätigtes, buchbares Angebot. `price_upper`: Obergrenze, wenn der Anbieter nur eine Spanne nennt (typisch bei Uber & Co., „23–29 €“); `price` ist dann die Untergrenze. |
+| **Money**   | `amount`, `currency`, `basis`                                                                                | Wie API-Konventionen §7. `basis`: `trip_total` (alle Reisenden) oder `per_person`.                                                                                                                                                                                                                                                                                                                       |
 
 Abgeleitete Werte wie Gesamtdauer, Anzahl der Umstiege oder günstigster Preis werden nicht übertragen. Der Aufrufer berechnet sie aus Legs und Offers.
 
@@ -149,46 +161,46 @@ Taxi und Uber-artige Dienste laufen über denselben Vertrag, als Service `taxi` 
 
 Jedes dokumentierte Feld ist immer vorhanden (API-Konventionen §5). Fehlendes wird so dargestellt:
 
-| Situation | Darstellung |
-| --- | --- |
-| Preis unbekannt | `"price": null`, **nie** `amount: 0` |
-| Preis ist keine Spanne | `"price_upper": null` |
-| genauer Punkt unbekannt | `"coordinates": null` |
-| Alter eines Reisenden nicht angegeben (Request) | `"age": null` oder Feld weglassen |
-| Quelle liefert gar keine Tarife (z. B. nur Fahrplan) | `"offers": null` |
-| Bekanntermaßen keine Angebote (z. B. Buchung noch nicht offen) | `"offers": []` |
-| Verfügbarkeit unbekannt | `"availability": "unknown"` |
-| Name, Code, Betreiber, Nummer, Buchungslink unbekannt | `null` |
+| Situation                                                      | Darstellung                          |
+| -------------------------------------------------------------- | ------------------------------------ |
+| Preis unbekannt                                                | `"price": null`, **nie** `amount: 0` |
+| Preis ist keine Spanne                                         | `"price_upper": null`                |
+| genauer Punkt unbekannt                                        | `"coordinates": null`                |
+| Alter eines Reisenden nicht angegeben (Request)                | `"age": null` oder Feld weglassen    |
+| Quelle liefert gar keine Tarife (z. B. nur Fahrplan)           | `"offers": null`                     |
+| Bekanntermaßen keine Angebote (z. B. Buchung noch nicht offen) | `"offers": []`                       |
+| Verfügbarkeit unbekannt                                        | `"availability": "unknown"`          |
+| Name, Code, Betreiber, Nummer, Buchungslink unbekannt          | `null`                               |
 
 ## 4. Status- und Fehlerfälle
 
 `status` sagt, wie verlässlich das Ergebnis ist. **Nur `no_results` heißt „es gibt keine Verbindung“.** Alle anderen Status ohne Journeys heißen „wir wissen es nicht“. Vollständig ist ein Ergebnis genau bei `success` und `no_results`.
 
-| `status` | Bedeutung | `journeys` | `errors` | HTTP |
-| --- | --- | --- | --- | --- |
-| `success` | alle Anbieter haben geantwortet, Treffer vorhanden | ≥ 1 | keine | 200 |
-| `no_results` | alle Anbieter haben geantwortet, kein Treffer | leer | keine | 200 |
-| `partial` | mindestens ein Anbieter ist ausgefallen, die anderen haben geantwortet | beliebig, auch leer | ≥ 1 mit `provider_id` | 200 |
-| `unavailable` | kein Anbieter hat geantwortet oder der Service selbst ist nicht erreichbar | leer | ≥ 1 | 200, bzw. 5xx/keine Antwort beim Service selbst |
-| `invalid_request` | der Service lehnt die Anfrage ab | leer | nur `validation_error` | 400 im Fehlerformat der API-Konventionen |
+| `status`          | Bedeutung                                                                  | `journeys`          | `errors`               | HTTP                                            |
+| ----------------- | -------------------------------------------------------------------------- | ------------------- | ---------------------- | ----------------------------------------------- |
+| `success`         | alle Anbieter haben geantwortet, Treffer vorhanden                         | ≥ 1                 | keine                  | 200                                             |
+| `no_results`      | alle Anbieter haben geantwortet, kein Treffer                              | leer                | keine                  | 200                                             |
+| `partial`         | mindestens ein Anbieter ist ausgefallen, die anderen haben geantwortet     | beliebig, auch leer | ≥ 1 mit `provider_id`  | 200                                             |
+| `unavailable`     | kein Anbieter hat geantwortet oder der Service selbst ist nicht erreichbar | leer                | ≥ 1                    | 200, bzw. 5xx/keine Antwort beim Service selbst |
+| `invalid_request` | der Service lehnt die Anfrage ab                                           | leer                | nur `validation_error` | 400 im Fehlerformat der API-Konventionen        |
 
 Andere Kombinationen sind vertragswidrig; der Aufrufer behandelt sie wie eine kaputte Antwort (`unavailable`).
 
 **ServiceError:** `code`, `message`, `provider_id` (welcher Anbieter, sonst `null`), `field` (nur bei `validation_error`), `is_retryable`.
 
-| `code` | Wann | `is_retryable` |
-| --- | --- | --- |
-| `validation_error` | Request ungültig, z. B. Orts-ID unbekannt | nein |
-| `timeout` | Anbieter oder Service antwortet nicht rechtzeitig | ja |
-| `rate_limited` | Anbieter drosselt | ja |
-| `provider_unavailable` | Anbieter nicht erreichbar oder meldet Ausfall | ja |
-| `authentication_failed` | Zugangsdaten des Services beim Anbieter ungültig | nein |
-| `invalid_provider_response` | Anbieter antwortet, aber unlesbar | nein |
-| `internal_error` | Fehler im Service selbst oder vertragswidrige Antwort | nein |
+| `code`                      | Wann                                                  | `is_retryable` |
+| --------------------------- | ----------------------------------------------------- | -------------- |
+| `validation_error`          | Request ungültig, z. B. Orts-ID unbekannt             | nein           |
+| `timeout`                   | Anbieter oder Service antwortet nicht rechtzeitig     | ja             |
+| `rate_limited`              | Anbieter drosselt                                     | ja             |
+| `provider_unavailable`      | Anbieter nicht erreichbar oder meldet Ausfall         | ja             |
+| `authentication_failed`     | Zugangsdaten des Services beim Anbieter ungültig      | nein           |
+| `invalid_provider_response` | Anbieter antwortet, aber unlesbar                     | nein           |
+| `internal_error`            | Fehler im Service selbst oder vertragswidrige Antwort | nein           |
 
 Abgrenzung „keine Verbindung“ vs. „ungültig“: Eine gültige Orts-ID, für die ein Service keine Verbindung kennt, ergibt `no_results` (DS6). Eine Orts-ID, die es nicht gibt, ergibt `invalid_request`.
 
-**HTTP:** Ein Ausfall eines Anbieters *hinter* dem Service ist eine normale Antwort (`200` mit `partial`/`unavailable`), weil der Service selbst funktioniert und die Details mitliefern kann. `4xx`/`5xx` bleiben Fehlern des Aufrufs vorbehalten. Der Aufrufer bildet sie so ab: `400` → `invalid_request`, `429` → `rate_limited`, `502/503/504` und keine Antwort → `provider_unavailable`, sonst `internal_error` (jeweils `unavailable`).
+**HTTP:** Ein Ausfall eines Anbieters _hinter_ dem Service ist eine normale Antwort (`200` mit `partial`/`unavailable`), weil der Service selbst funktioniert und die Details mitliefern kann. `4xx`/`5xx` bleiben Fehlern des Aufrufs vorbehalten. Der Aufrufer bildet sie so ab: `400` → `invalid_request`, `429` → `rate_limited`, `502/503/504` und keine Antwort → `provider_unavailable`, sonst `internal_error` (jeweils `unavailable`).
 
 Beispiele für alle Fälle liegen in [`examples/`](examples/).
 
