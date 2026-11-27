@@ -24,7 +24,7 @@ RETRYABLE = {
 }
 
 
-def stop(location_id: str, *, name: str | None, code: str | None, latitude: float, longitude: float) -> dict[str, Any]:
+def stop(location_id: str | None, *, name: str | None, code: str | None, latitude: float, longitude: float) -> dict[str, Any]:
     return {
         "location_id": location_id,
         "name": name,

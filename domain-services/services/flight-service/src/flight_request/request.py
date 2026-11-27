@@ -1,8 +1,8 @@
 """Incoming search request (``JourneySearchRequest`` in domain-services/contract/openapi.yaml).
 
-Flight-service rule on top of the contract: ``origin_coordinates`` and
-``destination_coordinates`` are required, because the Airport-Finder searches
-around these points. Without them the request is rejected (``invalid_request``).
+``origin_coordinates`` and ``destination_coordinates`` are required; the
+Airport-Finder searches around these points. ``origin_id`` and
+``destination_id`` are optional and only returned as ``Stop.location_id``.
 """
 
 from __future__ import annotations
@@ -33,8 +33,8 @@ class Point:
 
 @dataclass(frozen=True)
 class SearchRequest:
-    origin_id: str
-    destination_id: str
+    origin_id: str | None
+    destination_id: str | None
     origin: Point
     destination: Point
     departure_after: datetime
@@ -55,21 +55,18 @@ def parse_request(body: Any) -> SearchRequest:
     def fail(field: str, message: str) -> None:
         errors.setdefault(field, []).append(message)
 
-    ids = {}
+    ids: dict[str, str | None] = {}
     for field in ("origin_id", "destination_id"):
         value = body.get(field)
-        if value is None:
-            fail(field, "This field is required.")
-        elif not isinstance(value, str) or not SLUG.fullmatch(value):
-            fail(field, "Must be a lowercase location slug such as 'berlin'.")
-        else:
-            ids[field] = value
+        if value is not None and (not isinstance(value, str) or not SLUG.fullmatch(value)):
+            fail(field, "Must be a lowercase location slug such as 'berlin', or null.")
+        ids[field] = value
 
     points = {}
     for field in ("origin_coordinates", "destination_coordinates"):
         value = body.get(field)
         if value is None:
-            fail(field, "Required by the flight service: airports are searched around this point.")
+            fail(field, "This field is required.")
             continue
         point = _point(value)
         if point is None:

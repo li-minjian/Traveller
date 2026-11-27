@@ -1,6 +1,4 @@
 {
-  "origin_id": "berlin",
-  "destination_id": "berlin",
   "origin_coordinates": {
     "latitude": 52.5251,
     "longitude": 13.3694
@@ -9,6 +7,8 @@
     "latitude": 52.3667,
     "longitude": 13.5033
   },
+  "origin_id": "berlin",
+  "destination_id": "berlin",
   "departure_after": "2026-12-15T05:30:00+01:00",
   "departure_before": null,
   "passengers": [

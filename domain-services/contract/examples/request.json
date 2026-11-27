@@ -1,8 +1,14 @@
 {
+  "origin_coordinates": {
+    "latitude": 52.52,
+    "longitude": 13.405
+  },
+  "destination_coordinates": {
+    "latitude": 48.1374,
+    "longitude": 11.5755
+  },
   "origin_id": "berlin",
   "destination_id": "munich",
-  "origin_coordinates": null,
-  "destination_coordinates": null,
   "departure_after": "2026-12-15T06:00:00+01:00",
   "departure_before": "2026-12-15T14:00:00+01:00",
   "passengers": [

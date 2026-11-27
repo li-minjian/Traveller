@@ -49,7 +49,7 @@ class RequestTests(unittest.TestCase):
 
     def test_invalid_values_are_reported_together(self):
         body = request_body(
-            origin_id="Berlin",
+            origin_id="Berlin",  # not a slug
             destination_coordinates={"latitude": 200, "longitude": 0},
             departure_after="2026-12-15T06:00:00",
             passengers=[],
@@ -59,6 +59,13 @@ class RequestTests(unittest.TestCase):
         self.assertEqual(
             set(ctx.exception.fields), {"origin_id", "destination_coordinates", "departure_after", "passengers"}
         )
+
+    def test_names_are_optional(self):
+        body = request_body()
+        del body["origin_id"]
+        body["destination_id"] = None
+        request = parse_request(body)
+        self.assertEqual((request.origin_id, request.destination_id), (None, None))
 
     def test_window_and_defaults(self):
         request = parse_request(request_body(departure_before="2026-12-15T12:00:00+01:00"))
@@ -106,6 +113,15 @@ class TravelpayoutsSearchTests(unittest.TestCase):
     @unittest.skipUnless(HAS_SCHEMA_TOOLS, "jsonschema/pyyaml not installed")
     def test_answer_matches_openapi(self):
         assert_matches_openapi(self.body, "JourneySearchResult")
+
+    @unittest.skipUnless(HAS_SCHEMA_TOOLS, "jsonschema/pyyaml not installed")
+    def test_without_names_location_id_is_null(self):
+        body = request_body()
+        del body["origin_id"], body["destination_id"]
+        _, result = run(flight_search(ber_lhr_transport()), body)
+        leg = result["journeys"][0]["legs"][0]
+        self.assertEqual((leg["origin"]["location_id"], leg["origin"]["code"]), (None, "BER"))
+        assert_matches_openapi(result, "JourneySearchResult")
 
 
 class StatusTests(unittest.TestCase):
@@ -182,9 +198,11 @@ class HttpErrorTests(unittest.TestCase):
         self.assertIn("departure_after", body["error"]["fields"])
 
     @unittest.skipUnless(HAS_SCHEMA_TOOLS, "jsonschema/pyyaml not installed")
-    def test_contract_example_request_needs_coordinates(self):
-        # The generic example has no coordinates: the flight service rejects it in the contract's error format.
+    def test_contract_examples(self):
         example = json.loads((CONTRACT / "examples" / "request.json").read_text(encoding="utf-8"))
+        status, body = run(flight_search(FakeTransport()), example)
+        self.assertEqual((status, body["status"]), (200, "no_results"))
+        del example["destination_coordinates"]
         status, body = run(flight_search(FakeTransport()), example)
         self.assertEqual(status, 400)
         assert_matches_openapi(body, "ErrorResponse")

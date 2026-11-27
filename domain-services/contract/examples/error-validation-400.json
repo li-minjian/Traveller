@@ -9,8 +9,8 @@
       "passengers.0.age": [
         "Must be between 0 and 120."
       ],
-      "destination_id": [
-        "Must differ from origin_id unless origin_coordinates and destination_coordinates are given."
+      "destination_coordinates": [
+        "This field is required."
       ]
     }
   }

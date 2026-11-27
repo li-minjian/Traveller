@@ -81,23 +81,23 @@ components:
 
     JourneySearchRequest:
       type: object
-      required: [origin_id, destination_id, departure_after]
+      required: [origin_coordinates, destination_coordinates, departure_after]
       properties:
-        origin_id:
-          $ref: "#/components/schemas/Slug"
-          description: Shared location ID (city level).
-        destination_id:
-          $ref: "#/components/schemas/Slug"
-          description: Shared location ID; must differ from origin_id unless both coordinates are given.
         origin_coordinates:
-          description: Exact start point (hotel, address), optional. Used by door-to-door services (taxi); others may ignore it.
-          oneOf:
-            - $ref: "#/components/schemas/Coordinates"
-            - type: "null"
+          $ref: "#/components/schemas/Coordinates"
+          description: Start point (address, hotel, city centre). The Journey Planner turns place names into coordinates before calling a service.
         destination_coordinates:
-          description: Exact end point, optional. With both coordinates, origin_id may equal destination_id (ride within a city).
+          $ref: "#/components/schemas/Coordinates"
+          description: End point, like origin_coordinates. May be in the same city as the start (ride within a city).
+        origin_id:
+          description: Optional location ID of the start (city level), e.g. for labels. Services must not depend on it; null/missing = not given.
           oneOf:
-            - $ref: "#/components/schemas/Coordinates"
+            - $ref: "#/components/schemas/Slug"
+            - type: "null"
+        destination_id:
+          description: Optional location ID of the destination, like origin_id.
+          oneOf:
+            - $ref: "#/components/schemas/Slug"
             - type: "null"
         departure_after:
           $ref: "#/components/schemas/LocalDateTime"
@@ -199,7 +199,11 @@ components:
       type: object
       required: [location_id, name, code, coordinates]
       properties:
-        location_id: { $ref: "#/components/schemas/Slug" }
+        location_id:
+          description: Location ID (city level) if known, e.g. origin_id/destination_id from the request; otherwise null.
+          oneOf:
+            - $ref: "#/components/schemas/Slug"
+            - type: "null"
         name: { type: [string, "null"], examples: [Berlin Brandenburg Airport] }
         code: { type: [string, "null"], description: Public code such as an IATA code., examples: [BER] }
         coordinates:

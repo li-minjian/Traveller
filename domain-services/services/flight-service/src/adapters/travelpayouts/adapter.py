@@ -228,7 +228,7 @@ def _ticket(
     return price, contract_json.journey(journey_id, PROVIDER_ID, [leg], [offer])
 
 
-def _stop(location_id: str, airport: Airport) -> dict[str, Any]:
+def _stop(location_id: str | None, airport: Airport) -> dict[str, Any]:
     return contract_json.stop(location_id, name=airport.name, code=airport.iata, latitude=airport.latitude, longitude=airport.longitude)
 
 

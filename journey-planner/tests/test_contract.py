@@ -290,7 +290,7 @@ class ExampleFileTests(unittest.TestCase):
     def test_validation_example_maps_to_invalid_request(self):
         result = result_from_http("flight", 400, load_example("error-validation-400.json"))
         self.assertIs(result.status, SearchStatus.INVALID_REQUEST)
-        self.assertIn("destination_id", result.validation_fields())
+        self.assertIn("destination_coordinates", result.validation_fields())
 
     def test_examples_match_mock_output(self):
         """The examples are real mock output, so docs and code cannot drift apart."""

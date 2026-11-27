@@ -42,7 +42,7 @@ Im Browser zeigt http://localhost:8101/docs eine Testseite für die API.
 
 ## Request und Response
 
-- Wie in [`openapi.yaml`](../../contract/openapi.yaml), aber **`origin_coordinates` und `destination_coordinates` sind Pflicht**, denn um diese Punkte wird nach Flughäfen gesucht. Fehlen sie, antwortet der Service mit `400` (`validation_error`).
+- Wie in [`openapi.yaml`](../../contract/openapi.yaml): Um `origin_coordinates` und `destination_coordinates` wird nach Flughäfen gesucht. `origin_id`/`destination_id` sind optional und werden nur als `location_id` zurückgegeben.
 - Jeder Flug enthält den Flughafen mit IATA-Code, Namen und Koordinaten (`origin`/`destination` im Leg).
 
 | `status` | Bedeutung |
